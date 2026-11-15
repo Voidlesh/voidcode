@@ -19,6 +19,7 @@ import {
   useEnvironmentStageLabel,
 } from "../SidebarStageBackdrop";
 import { StudioAppearance } from "../../customt3/StudioAppearance";
+import { notifyThemeSaveFailure } from "../CommandPaletteThemeItems";
 import { useCustomThemes } from "../../hooks/useCustomThemes";
 import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
 import { useTheme } from "../../hooks/useTheme";
@@ -88,9 +89,11 @@ const EFFORT_DISPLAY_LABELS: Record<EffortDisplay, string> = {
 export function AppearanceSettingsPanel() {
   const {
     appearanceMode,
+    claudeLook,
     refreshTheme,
     resolvedTheme,
     setAppearanceMode,
+    setClaudeLook,
     setTheme,
     setThemeHalf,
     theme,
@@ -347,6 +350,19 @@ export function AppearanceSettingsPanel() {
                 updateSettings({ mathRenderingEnabled: Boolean(checked) })
               }
               aria-label="Render math"
+            />
+          }
+        />
+        <SettingsRow
+          title="Claude look"
+          description="Warm Claude-style colours, serif assistant replies and softer corners. Applies to the whole app; your theme choice is kept."
+          control={
+            <Switch
+              checked={claudeLook}
+              onCheckedChange={(checked) => {
+                if (!setClaudeLook(Boolean(checked))) notifyThemeSaveFailure();
+              }}
+              aria-label="Claude look"
             />
           }
         />

@@ -406,3 +406,48 @@ describe("index.html boot script", () => {
     expect(dark.isDark).toBe(true);
   });
 });
+
+describe("boot script with Claude look", () => {
+  it("applies the claude palette and keeps the stored appearance mode", () => {
+    const light = runBootScript({
+      storage: {
+        "t3code:claude-look": "true",
+        "t3code:theme": "ember",
+        "t3code:theme-appearance-mode": "light",
+      },
+      prefersDark: true,
+    });
+    expect(light.themeId).toBe("claude");
+    expect(light.isDark).toBe(false);
+    expect(light.bootVariables["--boot-background"]).toBe("#FAF9F5");
+
+    const dark = runBootScript({
+      storage: {
+        "t3code:claude-look": "true",
+        "t3code:theme": "ember",
+        "t3code:theme-appearance-mode": "dark",
+      },
+      prefersDark: false,
+    });
+    expect(dark.isDark).toBe(true);
+    expect(dark.bootVariables["--boot-background"]).toBe("#262624");
+  });
+
+  it("leaves the stored theme alone when claude look is off", () => {
+    const result = runBootScript({
+      storage: { "t3code:theme": "ember", "t3code:theme-appearance-mode": "light" },
+      prefersDark: false,
+    });
+    expect(result.themeId).toBe("ember");
+  });
+});
+
+describe("boot script with Claude look off", () => {
+  it("does not treat a stored claude theme as built-in", () => {
+    const result = runBootScript({
+      storage: { "t3code:theme": "claude", "t3code:theme-appearance-mode": "light" },
+      prefersDark: false,
+    });
+    expect(result.themeId).not.toBe("claude");
+  });
+});
