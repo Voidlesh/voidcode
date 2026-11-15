@@ -174,6 +174,7 @@ function Panel({ fixture }: { fixture: ReturnType<typeof setup> }) {
         onDeleteProjectScript={scriptResult}
         usage={{} as never}
         progress={null}
+        isWorking={false}
       />
     </ChatCanvasContext>
   );
