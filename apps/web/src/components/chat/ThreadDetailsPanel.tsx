@@ -94,6 +94,7 @@ interface ThreadDetailsPanelProps extends Pick<
   onDeleteProjectScript: (scriptId: string) => Promise<ProjectScriptActionResult>;
   usage: ThreadDetailsUsageInput;
   progress: ThreadProgress | null;
+  isWorking: boolean;
 }
 
 export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
@@ -294,7 +295,7 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
               ) : null}
 
               {visible.progress && props.progress ? (
-                <ThreadDetailsProgress progress={props.progress} />
+                <ThreadDetailsProgress progress={props.progress} isWorking={props.isWorking} />
               ) : null}
 
               {/* Shown only when no section above has content, so an emptied card can be refilled. */}

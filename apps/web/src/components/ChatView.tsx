@@ -3972,6 +3972,7 @@ export default function ChatView(props: ChatViewProps) {
                     contextWindow: activeContextWindow,
                   }}
                   progress={activeProgress}
+                  isWorking={isWorking}
                 />
 
                 <PullRequestThreadDialogHost

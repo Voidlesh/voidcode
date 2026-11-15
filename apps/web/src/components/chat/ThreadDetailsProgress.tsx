@@ -2,6 +2,7 @@ import type { OrchestrationV2PlanStep } from "@t3tools/contracts";
 import { CheckIcon } from "lucide-react";
 
 import { cn } from "../../lib/utils";
+import { Spinner } from "../ui/spinner";
 import { ThreadDetailsSection } from "./ThreadDetailsSection";
 import type { ThreadProgress } from "./threadProgress.logic";
 
@@ -11,8 +12,14 @@ const STEP_STATUS_LABEL: Record<OrchestrationV2PlanStep["status"], string> = {
   completed: "Done",
 };
 
-/** The agent's own checklist: a bar for how far it is, then every step with its state. */
-export function ThreadDetailsProgress({ progress }: { readonly progress: ThreadProgress }) {
+/** The agent's own checklist: how far it is, then every step with its state. */
+export function ThreadDetailsProgress({
+  progress,
+  isWorking,
+}: {
+  readonly progress: ThreadProgress;
+  readonly isWorking: boolean;
+}) {
   const percent = Math.round((progress.done / progress.total) * 100);
   return (
     <ThreadDetailsSection
@@ -20,7 +27,7 @@ export function ThreadDetailsProgress({ progress }: { readonly progress: ThreadP
       title="Progress"
       showHeading={false}
     >
-      <div className="flex flex-col text-xs">
+      <div className="flex flex-col gap-1.5 text-xs">
         <div
           role="progressbar"
           aria-label="Progress"
@@ -28,17 +35,15 @@ export function ThreadDetailsProgress({ progress }: { readonly progress: ThreadP
           aria-valuemax={progress.total}
           aria-valuenow={progress.done}
           aria-valuetext={`${progress.done} of ${progress.total} steps done`}
-          className="grid h-6 grid-cols-[auto_minmax(3rem,1fr)_auto] items-center gap-x-3 px-2.5"
+          className="flex flex-col gap-1.5 px-2.5 pt-1"
         >
-          <span
-            className={cn(
-              "min-w-0 max-w-36 truncate",
-              progress.current ? "font-medium text-foreground" : "text-muted-foreground",
-            )}
-          >
-            {progress.current?.text ?? "Done"}
-          </span>
-          <span className="relative h-[3px] rounded-full bg-muted-foreground/30 dark:bg-muted-foreground/20">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="font-medium text-foreground">Progress</span>
+            <span className="tabular-nums text-muted-foreground">
+              {progress.done}/{progress.total}
+            </span>
+          </div>
+          <span className="relative h-1 overflow-hidden rounded-full bg-muted-foreground/20">
             {percent > 0 ? (
               <span
                 className="absolute inset-y-0 left-0 rounded-full bg-foreground/80"
@@ -46,22 +51,25 @@ export function ThreadDetailsProgress({ progress }: { readonly progress: ThreadP
               />
             ) : null}
           </span>
-          <span className="text-end font-medium tabular-nums text-foreground/80">
-            {progress.done}/{progress.total}
-          </span>
         </div>
         <ol
           role="list"
           data-thread-details-progress-list
-          className="mt-0.5 flex max-h-56 flex-col overflow-y-auto"
+          className="flex max-h-64 flex-col gap-px overflow-y-auto"
         >
           {progress.steps.map((step) => (
-            <li key={step.id} className="flex min-h-6 items-start gap-2 rounded-lg px-2.5 py-1">
-              <StepMarker status={step.status} />
+            <li
+              key={step.id}
+              className={cn(
+                "grid grid-cols-[1rem_minmax(0,1fr)] items-start gap-x-2 rounded-md px-2.5 py-1.5",
+                step.status === "running" && "bg-foreground/[0.04]",
+              )}
+            >
+              <StepMarker status={step.status} isWorking={isWorking} />
               <span
                 className={cn(
-                  "min-w-0 line-clamp-2 leading-4",
-                  step.status === "completed" && "text-muted-foreground line-through",
+                  "wrap-anywhere leading-4",
+                  step.status === "completed" && "text-muted-foreground/70 line-through",
                   step.status === "running" && "font-medium text-foreground",
                   step.status === "pending" && "text-muted-foreground",
                 )}
@@ -77,12 +85,25 @@ export function ThreadDetailsProgress({ progress }: { readonly progress: ThreadP
   );
 }
 
-function StepMarker({ status }: { readonly status: OrchestrationV2PlanStep["status"] }) {
+function StepMarker({
+  status,
+  isWorking,
+}: {
+  readonly status: OrchestrationV2PlanStep["status"];
+  readonly isWorking: boolean;
+}) {
+  if (status === "running" && isWorking) {
+    return (
+      <span aria-hidden className="flex size-4 items-center justify-center text-foreground/80">
+        <Spinner aria-hidden role="presentation" size="md" />
+      </span>
+    );
+  }
   return (
     <span
       aria-hidden
       className={cn(
-        "mt-px flex size-4 shrink-0 items-center justify-center rounded-full border",
+        "flex size-4 items-center justify-center rounded-full border",
         status === "completed" && "border-transparent bg-foreground/80 text-background",
         status === "running" && "border-foreground/80",
         status === "pending" && "border-muted-foreground/40",
