@@ -53,6 +53,7 @@ import {
 } from "./lib/windowControlsOverlay";
 import { startProviderAuthDelivery } from "./providerAuthDelivery";
 import { getRouter, type AppRouter } from "./router";
+import { startDiscordActivityReporter } from "./customt3/discordActivityReporter";
 import { appAtomRegistry } from "./rpc/atomRegistry";
 import { environmentProjects } from "./state/projects";
 import { primaryServerConfigAtom } from "./state/server";
@@ -293,6 +294,7 @@ export function startAppServices(): AppRouter {
   startBackgroundThreadAnnouncements(appAtomRegistry, router);
   startThreadVisitedMigration(appAtomRegistry);
   startSshPasswordPromptQueue();
+  startDiscordActivityReporter(router);
 
   startKeybindingsUpdateToasts();
   startSlowRpcRequestToasts();

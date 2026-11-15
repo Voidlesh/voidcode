@@ -18,6 +18,7 @@ import {
   type SidebarStageBackdropVariant,
   useEnvironmentStageLabel,
 } from "../SidebarStageBackdrop";
+import { StudioAppearance } from "../../customt3/StudioAppearance";
 import { useCustomThemes } from "../../hooks/useCustomThemes";
 import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
 import { useTheme } from "../../hooks/useTheme";
@@ -144,6 +145,7 @@ export function AppearanceSettingsPanel() {
 
   return (
     <SettingsPageContainer>
+      <StudioAppearance />
       <SettingsSection id="appearance" title="Colors & themes" variant="plain" hideTitle>
         <div id={searchableSetting("theme").id}>
           <ThemeLibrary

@@ -9,6 +9,23 @@ import {
   t3OrchestrationSystemPrompt,
 } from "./orchestrationInstructions.ts";
 
+describe("T3 progress checklist instructions", () => {
+  it("tell agents to keep a task list for multi-step work, and reach every delivery path", () => {
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "### Progress checklist");
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "`TodoWrite`");
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "`update_plan`");
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "Skip it for conversation");
+    assert.include(t3OrchestrationSystemPrompt(true, false), "### Progress checklist");
+    assert.include(
+      t3AcpPromptWithInstructions({
+        prompt: "Do it.",
+        state: { interactionMode: "default", hasT3Mcp: true, hasDeviceTools: false },
+      }),
+      "### Progress checklist",
+    );
+  });
+});
+
 describe("T3 device instructions", () => {
   it("route device work through device_open and give Claude the line that loads the tools", () => {
     for (const intent of ["`device_list`", "`device_open`", "`agent-device`", "ssh", "`hostId`"]) {

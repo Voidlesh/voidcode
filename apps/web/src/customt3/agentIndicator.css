@@ -1,0 +1,27 @@
+[data-ct3-rays],
+[data-ct3-core] {
+  transform-origin: 12px 12px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-ct3-agent][data-moving="true"] [data-ct3-rays] {
+    animation: ct3-agent-turn 3s linear infinite;
+  }
+  [data-ct3-agent][data-moving="true"] [data-ct3-core] {
+    animation: ct3-agent-breathe 2s ease-in-out infinite;
+  }
+  [data-ct3-agent][data-action="command"] [data-ct3-rays],
+  [data-ct3-agent][data-action="tool"] [data-ct3-rays] {
+    animation-duration: 1.5s;
+  }
+}
+@keyframes ct3-agent-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ct3-agent-breathe {
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
+}

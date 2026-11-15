@@ -513,6 +513,11 @@ export default defineConfig({
         rules: { "shadcn/no-unknown-classes": "error" },
       },
       {
+        files: ["apps/web/src/customt3/**"],
+        // These classes are defined in the imported studio.css and discord.css, outside Tailwind.
+        rules: { "shadcn/no-unknown-classes": ["error", { allow: ["ct3-*", "rpc-*"] }] },
+      },
+      {
         files: ["apps/web/src/**"],
         rules: { "t3code/no-outset-state-indicators": "error" },
       },

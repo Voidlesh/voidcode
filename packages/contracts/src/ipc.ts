@@ -16,6 +16,7 @@ import { type ClientSettings, type QuitConfirmationMode, SnapShotShortcut } from
 import type { EditorId } from "./editor.ts";
 import { KeybindingShortcut, type PreviewForwardedShortcut } from "./keybindings.ts";
 
+import type { DesktopDiscordPresenceBridge } from "./discordPresence.ts";
 import type {
   DesktopAppActivationRequest,
   DesktopAppActivationResponse,
@@ -1057,6 +1058,8 @@ export const SystemSettingsPaneSchema = Schema.Literals(["full-disk-access"]);
 export type SystemSettingsPane = typeof SystemSettingsPaneSchema.Type;
 
 export interface DesktopBridge {
+  /** Present only in desktop builds that ship Discord Rich Presence. */
+  discordPresence?: DesktopDiscordPresenceBridge;
   getAppBranding: () => DesktopAppBranding | null;
   getRelayTelemetryEnabled: () => boolean;
   getPathForFile: (file: File) => string;

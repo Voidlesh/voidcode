@@ -7,6 +7,11 @@ import {
 import { makeProviderTextDeltaCoalescer } from "./ProviderTextDeltaCoalescer.ts";
 import { claudeTaskOutputRoot, tailClaudeTaskOutput } from "./ClaudeTaskOutputTail.ts";
 import {
+  claudePlanProgressBarId,
+  claudePlanProgressSteps,
+  isClaudePlanProgressTool,
+} from "./claudePlanProgress.ts";
+import {
   dynamicToolTitle,
   formatReadToolLabel,
   formatSearchToolLabel,
@@ -5838,6 +5843,10 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
         const planIdsByNativeItem = yield* Ref.make(
           new Map<string, OrchestrationV2PlanArtifact["id"]>(),
         );
+        // A TodoWrite or another bar replaces the visible list, so each plan_progress bar keeps its own steps.
+        const planProgressStepsByBar = yield* Ref.make(
+          new Map<string, ReadonlyArray<OrchestrationV2PlanStep>>(),
+        );
         const providerRetries = yield* Ref.make(
           new Map<OrchestrationV2ProviderTurn["id"], ActiveClaudeProviderRetry>(),
         );
@@ -11373,6 +11382,35 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
                 kind: "todo_list",
                 steps: claudeTodoSteps(nativeToolInput),
               }).pipe(Effect.orDie);
+            }
+            if (
+              isClaudePlanProgressTool(toolUse.name) &&
+              parentToolUseIdFromSdkMessage(message) === null &&
+              !(yield* Ref.get(planIdsByNativeItem)).has(
+                `${context.input.threadId}:todo_list:${toolUse.id}`,
+              )
+            ) {
+              const barId = claudePlanProgressBarId(nativeToolInput);
+              const barKey = `${context.input.threadId}:${barId}`;
+              const previousList = (yield* Ref.get(latestPlanByKind)).get(
+                `${context.input.threadId}:todo_list`,
+              );
+              const steps = claudePlanProgressSteps(
+                nativeToolInput,
+                (yield* Ref.get(planProgressStepsByBar)).get(barKey) ??
+                  (previousList?.kind === "todo_list" ? previousList.steps : undefined),
+              );
+              if (steps !== null) {
+                yield* emitClaudePlanProjection({
+                  context,
+                  nativeItemId: toolUse.id,
+                  kind: "todo_list",
+                  steps,
+                }).pipe(Effect.orDie);
+                yield* Ref.update(planProgressStepsByBar, (current) =>
+                  new Map(current).set(barKey, steps),
+                );
+              }
             }
             yield* ensureToolCallStarted({
               context,

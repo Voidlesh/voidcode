@@ -104,6 +104,12 @@ function unwrapEnsureSshEnvironmentResult(result: unknown) {
 }
 
 contextBridge.exposeInMainWorld("desktopBridge", {
+  discordPresence: {
+    get: () => ipcRenderer.invoke(IpcChannels.DISCORD_PRESENCE_GET_CHANNEL),
+    save: (config) => ipcRenderer.invoke(IpcChannels.DISCORD_PRESENCE_SAVE_CHANNEL, config),
+    reportContext: (context) =>
+      ipcRenderer.invoke(IpcChannels.DISCORD_PRESENCE_CONTEXT_CHANNEL, context),
+  },
   getAppBranding: () => {
     const result = ipcRenderer.sendSync(IpcChannels.GET_APP_BRANDING_CHANNEL);
     if (typeof result !== "object" || result === null) {

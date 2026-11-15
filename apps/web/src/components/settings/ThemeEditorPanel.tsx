@@ -112,6 +112,7 @@ const THEME_EDITOR_ROLE_GROUPS: ReadonlyArray<{
         roles: ["border", "toolbarBorder", "sidebarBorder"],
       },
       { id: "input", label: "Input", role: "input", roles: ["input"] },
+      { id: "composer", label: "Prompt background", role: "composer", roles: ["composer"] },
     ],
   },
   {

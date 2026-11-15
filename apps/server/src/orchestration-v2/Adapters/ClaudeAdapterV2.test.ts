@@ -2997,7 +2997,7 @@ describe("ClaudeAdapterV2 native fork", () => {
         runtimePolicy: ProviderAdapter.ProviderAdapterV2RuntimePolicy.make({
           runtimeMode: "full-access",
           interactionMode: "default",
-          cwd: "/workspace",
+          cwd: NodePath.resolve("/workspace"),
         }),
       });
 

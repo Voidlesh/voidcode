@@ -151,7 +151,15 @@ function lenientThemeColorOverrides(
 
 function parseStoredThemeColors(value: unknown, appearance: ThemeAppearance): ThemeColors | null {
   if (!isRecord(value)) return null;
-  return { ...getDefaultThemeColors(appearance), ...lenientThemeColorOverrides(value) };
+  const overrides = lenientThemeColorOverrides(value);
+  return {
+    ...getDefaultThemeColors(appearance),
+    ...overrides,
+    composer:
+      overrides.composer ??
+      overrides.surfaceRaised ??
+      getDefaultThemeColors(appearance).surfaceRaised,
+  };
 }
 
 function parseStoredThemeVariants(
@@ -265,7 +273,12 @@ function publishedThemeColors(
     appearance === theme.appearance && theme.canvas !== undefined && theme.accent !== undefined
       ? createVividThemeColors(appearance, theme.canvas, theme.accent)
       : getDefaultThemeColors(appearance);
-  return { ...base, ...lenientThemeColorOverrides(colors ?? {}) };
+  const overrides = lenientThemeColorOverrides(colors ?? {});
+  return {
+    ...base,
+    ...overrides,
+    composer: overrides.composer ?? overrides.surfaceRaised ?? base.composer,
+  };
 }
 
 function environmentThemeDefinition(theme: EnvironmentTheme): ThemeDefinition {
@@ -909,6 +922,7 @@ export function createVividThemeColors(
     toolbarControlHover: themeColor(surfaceAt(dark ? 0.14 : 0.09, tintC * 1.6)),
     surface: themeColor(surface),
     surfaceRaised: themeColor(surfaceRaised),
+    composer: themeColor(surfaceRaised),
     surfaceOverlay: themeColor(surfaceOverlay),
     text: themeRgbToThemeColor(textRgb),
     textMuted: themeRgbToThemeColor(textMutedRgb),
@@ -1547,9 +1561,12 @@ export function parseThemeFile(value: unknown): ThemeDefinition {
         throw new Error(`Theme variants must not repeat the base appearance "${appearance}".`);
       }
       const variantFallback = getDefaultThemeColors(variantAppearance);
+      const variantOverrides = parseThemeColorOverrides(variantColors);
       variants[variantAppearance] = {
         ...variantFallback,
-        ...parseThemeColorOverrides(variantColors),
+        ...variantOverrides,
+        composer:
+          variantOverrides.composer ?? variantOverrides.surfaceRaised ?? variantFallback.composer,
       };
     }
   }
@@ -1558,7 +1575,11 @@ export function parseThemeFile(value: unknown): ThemeDefinition {
     id,
     label: name.trim(),
     appearance,
-    colors: { ...fallback, ...overrides },
+    colors: {
+      ...fallback,
+      ...overrides,
+      composer: overrides.composer ?? overrides.surfaceRaised ?? fallback.composer,
+    },
     ...(Object.keys(variants).length > 0 ? { variants } : {}),
     ...(collection ? { collection } : {}),
     ...(value.managed === true ? { managed: true } : {}),
@@ -1593,6 +1614,7 @@ const APP_THEME_VARIABLES: Readonly<Record<ThemeColorRole, string>> = {
   toolbarControlHover: "--app-theme-toolbar-control-hover",
   surface: "--app-theme-surface",
   surfaceRaised: "--app-theme-surface-raised",
+  composer: "--app-theme-composer",
   surfaceOverlay: "--app-theme-surface-overlay",
   text: "--app-theme-text",
   textMuted: "--app-theme-text-muted",

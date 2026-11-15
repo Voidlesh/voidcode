@@ -122,6 +122,7 @@ import { Menu, MenuItem, MenuItemDetail, MenuPopup, MenuSeparator, MenuTrigger }
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { MiddleTruncate } from "../ui/middle-truncate";
 import { useThreadHasUnsentDraft } from "../../composerDraftStore";
+import { AgentIndicator } from "../../customt3/AgentIndicator";
 
 // The fields thread rows show. Provider status pushes refresh `checkedAt`,
 // status and auth on every provider; leaving those out keeps each
@@ -540,7 +541,29 @@ const TOP_STATUS_ICONS = {
   woke: AlarmClockIcon,
 } as const;
 
-function TopStatusIcon(props: { icon: keyof typeof TOP_STATUS_ICONS; className: string }) {
+const AGENT_INDICATOR_ICONS: ReadonlySet<keyof typeof TOP_STATUS_ICONS> = new Set([
+  "working",
+  "waiting",
+  "approval",
+  "input",
+  "failed",
+]);
+
+function TopStatusIcon(props: {
+  icon: keyof typeof TOP_STATUS_ICONS;
+  className: string;
+  thread: SidebarThreadSummary;
+  provider: SidebarProviderEntry | null;
+}) {
+  if (AGENT_INDICATOR_ICONS.has(props.icon)) {
+    return (
+      <AgentIndicator
+        thread={props.thread}
+        provider={props.provider}
+        size={props.className.includes("size-4") ? "md" : "sm"}
+      />
+    );
+  }
   const Icon = TOP_STATUS_ICONS[props.icon];
   return <Icon aria-hidden className={cn("shrink-0", props.className)} />;
 }
@@ -1331,7 +1354,12 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                           topStatus.className,
                         )}
                       >
-                        <TopStatusIcon icon={topStatus.icon} className="size-3" />
+                        <TopStatusIcon
+                          icon={topStatus.icon}
+                          className="size-3"
+                          thread={thread}
+                          provider={providerEntry}
+                        />
                         {topStatus.label}
                       </span>
                     ) : (
@@ -1519,7 +1547,12 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                             topStatus.className,
                           )}
                         >
-                          <TopStatusIcon icon={topStatus.icon} className="size-4" />
+                          <TopStatusIcon
+                            icon={topStatus.icon}
+                            className="size-4"
+                            thread={thread}
+                            provider={providerEntry}
+                          />
                           {/* Not a live region: a collapsed sidebar is inert, so
                             BackgroundThreadAnnouncer and the open thread's
                             timeline speak status changes instead. */}

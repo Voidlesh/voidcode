@@ -62,6 +62,8 @@ import {
   workEntryIconName,
 } from "./TimelineWorkEntryRow.logic";
 import { formatWorkingTimerNow } from "./TimelineWorkGroupRows.logic";
+import { AgentIndicator } from "../../customt3/AgentIndicator";
+import { formatContextWindowTokens } from "~/lib/contextWindow";
 
 export const WorkGroupSection = memo(function WorkGroupSection({
   anchorKey,
@@ -133,6 +135,42 @@ function WorkingTimer({ createdAt }: { createdAt: string }) {
       ref={tickTextContent(() => formatWorkingTimerNow(createdAt, activeThreadEnvironmentId), true)}
       className="tabular-nums"
     />
+  );
+}
+
+const TOKEN_COUNT_TWEEN_MS = 600;
+
+/** Counts up to `tokens` through the DOM, so a report never re-renders the timeline. */
+function LiveTokenCount({ tokens }: { tokens: number }) {
+  const nodeRef = useRef<HTMLSpanElement>(null);
+  const shownRef = useRef(tokens);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- tweens a DOM text node toward the latest report
+  useLayoutEffect(() => {
+    const node = nodeRef.current;
+    if (!node) return;
+    const from = shownRef.current;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion || from >= tokens) {
+      shownRef.current = tokens;
+      node.textContent = formatContextWindowTokens(tokens);
+      return;
+    }
+    const startedAt = performance.now();
+    let frame = 0;
+    const step = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / TOKEN_COUNT_TWEEN_MS);
+      const eased = 1 - (1 - progress) ** 3;
+      shownRef.current = Math.round(from + (tokens - from) * eased);
+      node.textContent = formatContextWindowTokens(shownRef.current);
+      if (progress < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [tokens]);
+  return (
+    <span ref={nodeRef} className="tabular-nums">
+      {formatContextWindowTokens(tokens)}
+    </span>
   );
 }
 
@@ -347,6 +385,7 @@ const workEntryKey = (entry: TimelineWorkEntry) => entry.id;
 export function WorkingTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "working" }> }) {
   const { isCompacting, isPreparingWorktree, backgroundWorktreeSetup } =
     use(TimelineRowActivityCtx);
+  const { threadRef } = use(TimelineRowCtx);
   const compacting = row.compacting === true || isCompacting;
   const shimmer = isPreparingWorktree || compacting;
   const label = isPreparingWorktree ? (
@@ -362,7 +401,12 @@ export function WorkingTimelineRow({ row }: { row: Extract<TimelineRow, { kind: 
   );
   return (
     <div className="border-b border-border/60 pb-2 pt-1">
-      <div className="flex h-6 min-w-0 items-baseline gap-2 px-1 text-sm leading-relaxed text-muted-foreground tabular-nums">
+      <div className="flex h-6 min-w-0 items-center gap-2 px-1 text-sm leading-relaxed text-muted-foreground tabular-nums">
+        <AgentIndicator
+          threadRef={threadRef}
+          showLabel
+          action={isPreparingWorktree ? "connecting" : compacting ? "compacting" : null}
+        />
         <span
           ref={shimmer ? observeVisibleAnimation : undefined}
           className="relative shrink-0 overflow-hidden whitespace-nowrap"
@@ -429,14 +473,29 @@ function CompactingLabel({ createdAt }: { createdAt: string | null }) {
 
 export function ThinkingTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "thinking" }> }) {
   const ctx = use(TimelineRowCtx);
-  const { isCompacting, isPreparingWorktree, liveAnswerPreview, providerStartingLabel } =
-    use(TimelineRowActivityCtx);
+  const {
+    isCompacting,
+    isPreparingWorktree,
+    liveAnswerPreview,
+    providerStartingLabel,
+    liveOutputTokens,
+  } = use(TimelineRowActivityCtx);
   if (isPreparingWorktree || isCompacting) return <WorkLogRow label="" />;
   // A failed group keeps this disclosure while an approval waits, but nothing is thinking then.
   const live = ctx.pendingApprovals.size === 0;
   const activity = (
     <LiveActivityRow
-      label={providerStartingLabel ?? row.label ?? liveAnswerPreview ?? "Thinking"}
+      label={
+        <>
+          {providerStartingLabel ?? row.label ?? liveAnswerPreview ?? "Thinking"}
+          {live && liveOutputTokens !== null && liveOutputTokens > 0 ? (
+            <span className="text-muted-foreground">
+              {" · ↓ "}
+              <LiveTokenCount tokens={liveOutputTokens} /> tokens
+            </span>
+          ) : null}
+        </>
+      }
       iconName="brain"
       active={live}
       shimmer={live}

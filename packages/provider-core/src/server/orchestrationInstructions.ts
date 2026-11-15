@@ -22,6 +22,9 @@ Ordinary coding tasks need no T3 tools.
 
 - Answer data with a trend or comparison with a chart and show any visual the user asks for here: pass an HTML file path or inline HTML to \`html_preview\`, then \`html_render\`. A screenshot on disk or a text description doesn't show it. Never start a server for it. Page tools write only on user request. Never use them to show results. Asked for an image to post, send or use elsewhere: a \`.png\` file and its path, never \`html_render\`.
 - Never use \`preview_*\` unasked to verify or show your own edit. Use them when the current request asks for browser work, including recording edits, or names a page or tab. Don't repeat preview calls from an earlier turn. Public pages: web fetch or search unless browser work was asked; then preview tools only, no web fetch. Close a tab you opened before you reply, unless the user asked for it or uses it.`,
+  `### Progress checklist
+
+When a task has several steps and is more than chat or a quick answer, keep a checklist in your harness's task-list tool if it has one (Claude \`TodoWrite\`, Codex \`update_plan\`). T3 Code shows it beside the thread, so the user sees how far you are and what you are on. Write it before the first step: one short item per step, exactly one in progress. Mark an item done as soon as it finishes, and update the list when the plan changes. Skip it for conversation, questions, and single-step work.`,
 ];
 
 export const T3_CODE_ORCHESTRATION_INSTRUCTIONS = `

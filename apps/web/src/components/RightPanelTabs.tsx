@@ -106,6 +106,13 @@ import { resolvePullRequestState } from "./pullRequest/pullRequestPresentation";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { observeResize } from "~/lib/observeResize";
 import { surfaceShortcutKey } from "~/lib/surfaceShortcutKey";
+import {
+  PinnedSurfacesBar,
+  PinnedSurfacesMenu,
+  SurfacePinIndicator,
+  usePinnedSurfaces,
+} from "./rightPanel/PinnedSurfacesControls";
+import { isSurfacePinned, surfaceKeyForKind } from "./rightPanel/pinnedSurfaces";
 
 export interface RightPanelTabsProps {
   mode: PreviewPanelMode;
@@ -213,6 +220,7 @@ type TabContextMenuAction =
   | "rename"
   | "copy-path"
   | "toggle-mute"
+  | "toggle-pin-surface"
   | "close"
   | "close-others"
   | "close-to-right"
@@ -877,6 +885,7 @@ function RightPanelTab(
     theme: "light" | "dark";
     environmentId: EnvironmentId | null;
     pullRequestStatusSeed: PullRequestTabStatusSeed | undefined;
+    pinned: boolean;
     renaming: boolean;
     canRename: boolean;
     ownsDesktopTitleBar: boolean;
@@ -948,6 +957,7 @@ function RightPanelTab(
           <TooltipPopup>{audio === "muted" ? "Unmute tab" : "Mute tab"}</TooltipPopup>
         </Tooltip>
       )}
+      {props.pinned ? <SurfacePinIndicator /> : null}
       {props.renaming ? (
         <input
           aria-label="Device tab name"
@@ -1032,6 +1042,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
   const tabListRef = useRef<HTMLDivElement>(null);
   const addSurfaceTriggerRef = useRef<HTMLButtonElement>(null);
   const [renamingDevice, setRenamingDevice] = useState<string | null>(null);
+  const { pinned: pinnedSurfaces, toggle: togglePinnedSurface } = usePinnedSurfaces();
   const [addSurfaceMenuOpen, setAddSurfaceMenuOpen] = useState(false);
   const [tabScrollState, setTabScrollState] = useState({
     hasOverflow: false,
@@ -1200,6 +1211,12 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
         }),
       });
     }
+    items.push({
+      id: "toggle-pin-surface",
+      label: isSurfacePinned(pinnedSurfaces, surfaceKeyForKind(surface.kind))
+        ? "Unpin surface"
+        : "Pin surface to topbar",
+    });
     items.push(
       { id: "close", label: "Close" },
       {
@@ -1239,6 +1256,9 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
         }
         break;
       }
+      case "toggle-pin-surface":
+        togglePinnedSurface(surfaceKeyForKind(surface.kind));
+        break;
       case "close":
         props.onCloseSurface(surface);
         break;
@@ -1351,6 +1371,9 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
         )}
         data-right-panel-tabbar
       >
+        {props.open !== false ? (
+          <PinnedSurfacesBar actions={addSurfaceActions} pinned={pinnedSurfaces} />
+        ) : null}
         <ScrollArea
           radius="none"
           ref={attachTabList}
@@ -1390,6 +1413,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
                     theme={resolvedTheme}
                     environmentId={props.environmentId}
                     pullRequestStatusSeed={props.pullRequestStatusSeeds?.[surface.id]}
+                    pinned={isSurfacePinned(pinnedSurfaces, surfaceKeyForKind(surface.kind))}
                     renaming={renamingDevice === surface.id}
                     canRename={props.onRenameDevice !== undefined}
                     ownsDesktopTitleBar={ownsDesktopTitleBar}
@@ -1476,6 +1500,13 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
                   })}
                 </MenuPopup>
               </Menu>
+            ) : null}
+            {props.open !== false ? (
+              <PinnedSurfacesMenu
+                actions={addSurfaceActions}
+                pinned={pinnedSurfaces}
+                onToggle={togglePinnedSurface}
+              />
             ) : null}
           </div>
         </ScrollArea>

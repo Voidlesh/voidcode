@@ -142,3 +142,6 @@ export const TAKE_LEGACY_LOCAL_STORAGE_CHANNEL = "desktop:take-legacy-local-stor
 export const COMPLETE_LEGACY_LOCAL_STORAGE_CHANNEL = "desktop:complete-legacy-local-storage";
 
 export const RESTART_AUDIO_SERVICE_CHANNEL = "desktop:restart-audio-service";
+export const DISCORD_PRESENCE_GET_CHANNEL = "customt3:discord:get";
+export const DISCORD_PRESENCE_SAVE_CHANNEL = "customt3:discord:save";
+export const DISCORD_PRESENCE_CONTEXT_CHANNEL = "customt3:discord:context";

@@ -314,6 +314,7 @@ import {
 } from "./chat/PanelLayoutControls";
 import type { ExpandedImagePreview } from "./chat/ExpandedImagePreview";
 import { ThreadDetailsPanel } from "./chat/ThreadDetailsPanel";
+import { deriveThreadProgress } from "./chat/threadProgress.logic";
 import { NoActiveThreadState } from "./NoActiveThreadState";
 import {
   resolveEffectiveEnvMode,
@@ -1510,10 +1511,22 @@ export default function ChatView(props: ChatViewProps) {
     activeThreadLiveTokenUsage,
     activeProviderThread,
   );
+  const activeProgress = deriveThreadProgress(
+    serverProjection?.plans ?? [],
+    serverLatestRun?.runId ?? null,
+  );
   const pendingBackgroundTasks = deriveThreadPendingBackgroundTasks(serverProjection);
   const activeWorkStartedAt =
     deriveActiveWorkStartedAt(activeActivityRun, activeRuntime, localDispatchStartedAt) ??
     runlessWorkStartedAt;
+  // A report older than this turn's start belongs to the previous turn.
+  const liveOutputTokens =
+    isWorking &&
+    activeContextWindow?.outputTokens != null &&
+    (activeWorkStartedAt === null ||
+      Date.parse(activeContextWindow.updatedAt) >= Date.parse(activeWorkStartedAt))
+      ? activeContextWindow.outputTokens
+      : null;
   const activeRunPreparing = activeActivityRun?.status === "preparing";
   const sendQueuesBehindSetup =
     isServerThread && (activeRunPreparing || activeActivityRun?.status === "starting");
@@ -3468,6 +3481,7 @@ export default function ChatView(props: ChatViewProps) {
                   }
                   activeTurnStartedAt={activeWorkStartedAt}
                   providerStartingLabel={activeActivityRun?.providerStartingLabel ?? null}
+                  liveOutputTokens={liveOutputTokens}
                   worktreeSetup={worktreeSetup}
                   onCancelWorktreeSetup={onCancelWorktreeSetupStable}
                   retryableWorkspacePreparationRunIds={retryableWorkspacePreparationRunIds}
@@ -3957,6 +3971,7 @@ export default function ChatView(props: ChatViewProps) {
                     sources: serverConfig?.usageLimitSources ?? EMPTY_USAGE_LIMIT_SOURCES,
                     contextWindow: activeContextWindow,
                   }}
+                  progress={activeProgress}
                 />
 
                 <PullRequestThreadDialogHost

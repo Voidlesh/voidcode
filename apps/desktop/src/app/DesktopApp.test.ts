@@ -44,6 +44,7 @@ import * as ElectronSafeStorage from "../electron/ElectronSafeStorage.ts";
 import * as PreviewPasskeys from "../preview/Passkeys.ts";
 import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
 import * as DesktopShellEnvironment from "../shell/DesktopShellEnvironment.ts";
+import * as DesktopBackground from "../background/DesktopBackground.ts";
 import * as DesktopSnapShot from "../snapShot/DesktopSnapShot.ts";
 import * as DesktopRendererHistory from "../telemetry/DesktopRendererHistory.ts";
 import * as DesktopUpdates from "../updates/DesktopUpdates.ts";
@@ -164,6 +165,7 @@ it.effect.each([false, true])(
           Effect.provideService(DesktopLegacyLocalStorage.DesktopLegacyLocalStorage, {
             load: () => Effect.void,
           } as unknown as DesktopLegacyLocalStorage.DesktopLegacyLocalStorage["Service"]),
+          Effect.provideService(DesktopBackground.DesktopBackground, { install: Effect.void }),
           Effect.provideService(DesktopSnapShot.DesktopSnapShot, {
             initialize: Effect.void,
           } as DesktopSnapShot.DesktopSnapShot["Service"]),
