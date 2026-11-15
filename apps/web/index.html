@@ -123,6 +123,21 @@
             },
           },
         };
+        // Claude-look only; kept out of BUILT_IN_THEME_PALETTES so a stored "claude" theme stays unknown while the look is off.
+        const CLAUDE_LOOK_PALETTES = {
+          light: {
+            background: "#FAF9F5",
+            foreground: "#141413",
+            accent: "#C15F3C",
+            chrome: "#FAF9F5",
+          },
+          dark: {
+            background: "#262624",
+            foreground: "#FAF9F5",
+            accent: "#C96442",
+            chrome: "#262624",
+          },
+        };
         const BUILT_IN_THEME_MODES = Object.fromEntries(
           Object.entries(BUILT_IN_THEME_PALETTES).map(([id, palettes]) => [
             id,
@@ -133,6 +148,7 @@
           "system",
           "light",
           "dark",
+          "claude",
           "t3-chat",
           "grove",
           "ocean",
@@ -377,7 +393,23 @@
               document.documentElement.style.setProperty(`--boot-${name}`, value);
             }
           }
-          setThemeColor(chromeColor);
+          // Claude-look replaces the palette but keeps the appearance mode chosen above.
+          if (window.localStorage.getItem("t3code:claude-look") === "true") {
+            const claudeMode = appearanceMode === "system" ? systemMode : appearanceMode;
+            const claudePalette = CLAUDE_LOOK_PALETTES[claudeMode];
+            document.documentElement.dataset.themeId = "claude";
+            document.documentElement.dataset.themeSelected = "true";
+            document.documentElement.dataset.claudeLook = "on";
+            document.documentElement.classList.toggle("dark", claudeMode === "dark");
+            document.documentElement.style.backgroundColor = claudePalette.chrome;
+            for (const [name, value] of Object.entries(claudePalette)) {
+              document.documentElement.style.setProperty(`--boot-${name}`, value);
+            }
+            setThemeColor(claudePalette.chrome);
+          } else {
+            delete document.documentElement.dataset.claudeLook;
+            setThemeColor(chromeColor);
+          }
         } catch {
           let prefersDark = true;
           try {

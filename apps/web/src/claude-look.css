@@ -1,0 +1,33 @@
+/*
+ * Claude-look structure. Every rule is scoped to html[data-claude-look="on"], so
+ * with the toggle off nothing here applies. Colours live in the "claude" palette
+ * (packages/shared/src/themePalettes.ts); this file only changes shape and type.
+ */
+
+html[data-claude-look="on"] {
+  --radius: 0.75rem;
+  --font-serif: "Iowan Old Style", "Charter", "Georgia", "Times New Roman", serif;
+  --shadow-composer: 0 1px 2px rgb(20 20 19 / 4%), 0 10px 28px -14px rgb(20 20 19 / 14%);
+}
+
+html[data-claude-look="on"].dark {
+  --shadow-composer: 0 1px 2px rgb(0 0 0 / 30%), 0 14px 32px -16px rgb(0 0 0 / 70%);
+}
+
+html[data-claude-look="on"] .surface-grain {
+  background-image: none;
+}
+
+html[data-claude-look="on"] .chat-markdown p,
+html[data-claude-look="on"] .chat-markdown li,
+html[data-claude-look="on"] .chat-markdown blockquote {
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+html[data-claude-look="on"] .chat-markdown pre,
+html[data-claude-look="on"] .chat-markdown pre code,
+html[data-claude-look="on"] .chat-markdown code {
+  font-family: var(--font-mono);
+}

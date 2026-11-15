@@ -8,6 +8,7 @@ import "culori/css";
 import { converter, parse } from "culori/fn";
 import {
   BUILT_IN_THEMES,
+  CLAUDE_LOOK_THEME,
   EMBER_THEME,
   GROVE_THEME,
   IRIS_THEME,
@@ -29,6 +30,7 @@ import {
   type ContextChipAccentKind,
 } from "./lib/contextChipAccents";
 
+import { readClaudeLook } from "./claudeLook";
 import { appAtomRegistry, subscribeAtomChanges } from "./rpc/atomRegistry";
 import { applyThemeCss } from "./themeCss";
 import { themeServerEnvironmentThemesAtom } from "./state/server";
@@ -1701,8 +1703,15 @@ export function applyThemePalette(theme: ThemePreference, appearance?: ThemeAppe
   if (!root?.style) return;
 
   setThemePreviewAppearance(null);
-  const palette = getThemeDefinition(theme);
+  // Claude-look overrides the chosen palette but keeps the stored theme and appearance mode.
+  const claudeLook = readClaudeLook();
+  const palette = claudeLook ? CLAUDE_LOOK_THEME : getThemeDefinition(theme);
   applyThemeCss(palette?.css);
+  if (claudeLook) {
+    root.dataset.claudeLook = "on";
+  } else {
+    delete root.dataset.claudeLook;
+  }
 
   if (palette) {
     root.dataset.themeId = palette.id;
@@ -1730,6 +1739,12 @@ export function resolveThemeAppearance(
   halves?: ThemeHalves | null,
 ): "light" | "dark" {
   const systemAppearance = systemDark ? "dark" : "light";
+  // The claude palette has both variants, so the requested mode always wins over the stored theme's own appearance.
+  if (readClaudeLook()) {
+    return appearanceMode === "light" || appearanceMode === "dark"
+      ? appearanceMode
+      : systemAppearance;
+  }
   const mode = appearanceMode ?? ((followSystem ?? theme === "system") ? "system" : null);
   if (mode === "system") {
     if (halves?.[systemAppearance]) return systemAppearance;

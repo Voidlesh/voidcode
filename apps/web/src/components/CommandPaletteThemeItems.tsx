@@ -62,6 +62,8 @@ export function useCommandPaletteThemeItems() {
     setAppearanceMode,
     setTheme,
     setThemeHalf,
+    claudeLook,
+    setClaudeLook,
   } = useTheme();
   const themeCards = useThemeCards();
 
@@ -159,5 +161,17 @@ export function useCommandPaletteThemeItems() {
     },
   };
 
-  return { changeThemeItem, changeAppearanceItem, themeEditorItem };
+  const claudeLookItem: CommandPaletteActionItem = {
+    kind: "action",
+    value: "action:claude-look",
+    searchTerms: ["claude look", "claude", "warm", "terracotta", "serif", "theme"],
+    title: "Toggle Claude look",
+    description: claudeLook ? "On" : "Off",
+    icon: <PaletteIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      if (!setClaudeLook(!claudeLook)) notifyThemeSaveFailure();
+    },
+  };
+
+  return { changeThemeItem, changeAppearanceItem, themeEditorItem, claudeLookItem };
 }
