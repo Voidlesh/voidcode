@@ -23,6 +23,8 @@ import { notifyThemeSaveFailure } from "../CommandPaletteThemeItems";
 import { useCustomThemes } from "../../hooks/useCustomThemes";
 import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
 import { useTheme } from "../../hooks/useTheme";
+import { InlineCodeColorControl } from "./InlineCodeColorControl";
+import { useInlineCodeColor, writeInlineCodeColor } from "../../inlineCodeColor";
 import { useScopedSettings, useUpdateScopedSettings } from "./useScopedSettings";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
@@ -99,6 +101,7 @@ export function AppearanceSettingsPanel() {
     theme,
     themeHalves,
   } = useTheme();
+  const inlineCodeColor = useInlineCodeColor();
   const customThemes = useCustomThemes();
   const [isImportThemeOpen, setIsImportThemeOpen] = useState(false);
   const settings = useScopedSettings();
@@ -365,6 +368,21 @@ export function AppearanceSettingsPanel() {
               aria-label="Claude look"
             />
           }
+        />
+        <SettingsRow
+          title="Inline code colour"
+          description="Text colour of `inline code` in messages. Empty keeps the theme's text colour."
+          resetAction={
+            inlineCodeColor !== null ? (
+              <SettingResetButton
+                label="inline code colour"
+                onClick={() => {
+                  if (!writeInlineCodeColor(null)) notifyThemeSaveFailure();
+                }}
+              />
+            ) : null
+          }
+          control={<InlineCodeColorControl color={inlineCodeColor} />}
         />
         <AdvancedSettings
           targetIds={[

@@ -393,6 +393,10 @@
               document.documentElement.style.setProperty(`--boot-${name}`, value);
             }
           }
+          const inlineCodeColor = window.localStorage.getItem("t3code:inline-code-color");
+          if (inlineCodeColor && /^#[0-9a-f]{6}$/i.test(inlineCodeColor)) {
+            document.documentElement.style.setProperty("--inline-code-color", inlineCodeColor);
+          }
           // Claude-look replaces the palette but keeps the appearance mode chosen above.
           if (window.localStorage.getItem("t3code:claude-look") === "true") {
             const claudeMode = appearanceMode === "system" ? systemMode : appearanceMode;
