@@ -533,7 +533,7 @@ describe("project identity reset", () => {
     await vi.waitFor(() =>
       expect(state.update).toHaveBeenCalledWith({
         environmentId: primaryId,
-        input: { projectId: state.projects[0]!.id, title: "No project" },
+        input: { projectId: state.projects[0]!.id, title: "Chats" },
       }),
     );
     await userEvent.click(resetButton(screen, "project icon")!);

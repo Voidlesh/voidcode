@@ -237,7 +237,7 @@ it.effect("creates one Scratch project, even for concurrent first requests", () 
       const root = yield* requireRoot;
       const scratchProjects = snapshot.projects.filter((project) => project.workspaceRoot === root);
       assert.lengthOf(scratchProjects, 1);
-      assert.equal(scratchProjects[0]?.title, "No project");
+      assert.equal(scratchProjects[0]?.title, "Chats");
       assert.deepEqual(scratchProjects[0]?.projectIcon, {
         kind: "lucide",
         name: "message-square-dashed",
@@ -470,6 +470,124 @@ it.effect("starts a named project as a committed repository, and suffixes a take
           "main",
         );
         assert.equal(yield* gitOutput(first.workspaceRoot, ["status", "--porcelain"]), "");
+      }),
+    ),
+  ),
+);
+
+it.effect("moves a chat's files beside the user's other projects and resumes after a retry", () =>
+  withScratch(({ baseDir }) =>
+    withGitEnv(
+      TEST_IDENTITY,
+      Effect.gen(function* () {
+        const folders = yield* ManagedProjectFolders.ManagedProjectFolders;
+        const projects = yield* ProjectService.ProjectService;
+        const fileSystem = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const devRoot = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-dev-folder-" });
+        for (const existing of ["alpha", "beta"]) {
+          const workspaceRoot = path.join(devRoot, existing);
+          yield* fileSystem.makeDirectory(workspaceRoot);
+          yield* projects.create({
+            commandId: CommandId.make(`relocate-existing-${existing}`),
+            projectId: ProjectId.make(`relocate-existing-${existing}`),
+            title: existing,
+            workspaceRoot,
+          });
+        }
+        const sourceFolder = path.join(baseDir, "scratch", "2026-01-01-chat");
+        yield* fileSystem.makeDirectory(path.join(sourceFolder, "src"), { recursive: true });
+        yield* fileSystem.writeFileString(path.join(sourceFolder, "src", "main.py"), "print(1)\n");
+        yield* fileSystem.writeFileString(path.join(sourceFolder, "README.md"), "# Mine\n");
+
+        const first = yield* folders.relocateScratchFolder({ name: "Pinball Stats", sourceFolder });
+        const retry = yield* folders.relocateScratchFolder({ name: "Pinball Stats", sourceFolder });
+
+        assert.equal(first.workspaceRoot, path.join(devRoot, "pinball-stats"));
+        assert.deepEqual(retry, { projectId: first.projectId, workspaceRoot: first.workspaceRoot });
+        assert.deepEqual((yield* fileSystem.readDirectory(devRoot)).toSorted(), [
+          "alpha",
+          "beta",
+          "pinball-stats",
+        ]);
+        const project = Option.getOrThrow(yield* projects.getById(first.projectId));
+        assert.equal(project.title, "Pinball Stats");
+        assert.equal(project.workspaceRoot, first.workspaceRoot);
+        assert.equal(
+          yield* fileSystem.readFileString(path.join(first.workspaceRoot, "src", "main.py")),
+          "print(1)\n",
+        );
+        assert.equal(
+          yield* fileSystem.readFileString(path.join(first.workspaceRoot, "README.md")),
+          "# Mine\n",
+        );
+        assert.isTrue(
+          yield* fileSystem.exists(path.join(first.workspaceRoot, "assets", "icon.svg")),
+        );
+        assert.isFalse(
+          yield* fileSystem.exists(path.join(first.workspaceRoot, ".t3-relocated-to")),
+        );
+        assert.equal(
+          yield* gitOutput(first.workspaceRoot, ["log", "--format=%s"]),
+          "Initial commit",
+        );
+        assert.deepEqual(
+          (yield* gitOutput(first.workspaceRoot, ["status", "--porcelain"])).split("\n").toSorted(),
+          ["?? README.md", "?? src/"],
+        );
+        assert.isTrue(yield* fileSystem.exists(sourceFolder));
+      }),
+    ),
+  ),
+);
+
+it.effect(
+  "keeps a chat's own repository and falls back to the managed folder without projects",
+  () =>
+    withScratch(({ baseDir }) =>
+      withGitEnv(
+        TEST_IDENTITY,
+        Effect.gen(function* () {
+          const folders = yield* ManagedProjectFolders.ManagedProjectFolders;
+          const fileSystem = yield* FileSystem.FileSystem;
+          const path = yield* Path.Path;
+          const sourceFolder = path.join(baseDir, "scratch", "2026-01-01-repo");
+          yield* fileSystem.makeDirectory(sourceFolder, { recursive: true });
+          yield* git(sourceFolder, ["init", "--quiet", "--initial-branch=trunk"]);
+          yield* fileSystem.writeFileString(path.join(sourceFolder, "a.txt"), "a\n");
+          yield* git(sourceFolder, ["add", "a.txt"]);
+          yield* git(sourceFolder, ["commit", "--quiet", "--message", "Mine"]);
+
+          const result = yield* folders.relocateScratchFolder({ name: "Kept", sourceFolder });
+
+          assert.equal(result.workspaceRoot, path.join(folders.namedProjectsRoot, "kept"));
+          assert.equal(yield* gitOutput(result.workspaceRoot, ["log", "--format=%s"]), "Mine");
+          assert.isFalse(yield* fileSystem.exists(path.join(result.workspaceRoot, "assets")));
+        }),
+      ),
+    ),
+);
+
+it.effect("ignores a relocation marker that names a folder outside the project folders", () =>
+  withScratch(({ baseDir }) =>
+    withGitEnv(
+      TEST_IDENTITY,
+      Effect.gen(function* () {
+        const folders = yield* ManagedProjectFolders.ManagedProjectFolders;
+        const fileSystem = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const foreign = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-foreign-" });
+        yield* git(foreign, ["init", "--quiet"]);
+        const sourceFolder = path.join(baseDir, "scratch", "2026-01-01-marked");
+        yield* fileSystem.makeDirectory(sourceFolder, { recursive: true });
+        yield* fileSystem.writeFileString(path.join(sourceFolder, ".t3-relocated-to"), foreign);
+
+        const result = yield* folders.relocateScratchFolder({ name: "Marked", sourceFolder });
+
+        assert.equal(result.workspaceRoot, path.join(folders.namedProjectsRoot, "marked"));
+        assert.isFalse(
+          yield* fileSystem.exists(path.join(result.workspaceRoot, ".t3-relocated-to")),
+        );
       }),
     ),
   ),

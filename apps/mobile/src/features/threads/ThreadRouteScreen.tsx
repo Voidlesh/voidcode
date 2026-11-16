@@ -81,6 +81,7 @@ import {
   stagePendingTerminalLaunch,
 } from "../terminal/terminalLaunchContext";
 import type { ThreadDetailScreenProps } from "./ThreadDetailScreen";
+import { ProjectProposalPrompt } from "./ProjectProposalPrompt";
 import { ThreadScreenBinding, ThreadScreenFallback, ThreadScreenHost } from "./ThreadScreenHost";
 import { draftRouteIdentity } from "./thread-route-state";
 import { NewTaskDraftRouteScreen, type NewTaskDraftRouteParams } from "./NewTaskDraftRouteScreen";
@@ -990,6 +991,7 @@ function ThreadRouteContent(
         onDismiss={dismissGitActionResult}
         onOpenPullRequest={openPullRequest}
       />
+      <ProjectProposalPrompt thread={selectedThread} busy={composer.activeThreadBusy} />
 
       <>
         <ThreadScreenBinding

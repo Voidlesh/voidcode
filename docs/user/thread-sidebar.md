@@ -5,9 +5,9 @@ need a separate branch and working directory.
 
 ## Start a thread
 
-On web and desktop, **New thread** opens the project picker when you have more than one
-open project in the default or project-grouped sidebar. Archived projects don't count. **Shift-click** to start in
-the current project, or use a project's own new-thread action. A new thread carries
+On web and desktop, **New thread** starts a chat without a project. Pick a project
+in the new thread's heading to turn it into a project thread, or use a project's
+own new-thread action. A new thread carries
 your model and mode selections, unless the destination project has its own model default.
 Its branch and workspace mode come from your configured defaults. To continue in
 an existing worktree, use **New thread in this worktree** from the branch toolbar.
@@ -22,13 +22,13 @@ a connected one if any is connected.
 When you change a new thread's project, T3 Code stays in the current environment
 if that project exists there. Otherwise it selects an environment that has it.
 
-### Start without a project
+### Start a chat without a project
 
-A thread does not need a project. To start one without a project, click **or
-start without a project** under a new thread's heading, pick **No project** from
-the project menu in that heading or from **New thread in...** in the command
-palette, or press `mod+alt+n`. On mobile, pick **No project** from the project
-list. It starts on your current machine; before sending, pick another machine
+A thread does not need a project. These threads are grouped as **Chats**. To
+start one, click **or start without a project** under a new thread's heading,
+pick **Chats** from the project menu in that heading or from **New thread in...**
+in the command palette, or press `mod+alt+n`. On mobile, pick **Chats** from the
+project list. It starts on your current machine; before sending, pick another machine
 from the machine menu to move it there. To move a draft into a project, pick the
 project in the heading.
 
@@ -40,11 +40,23 @@ folder, so the files the agent wrote stay until you delete them. Branch, worktre
 these folders are not Git repositories. This is unavailable when the data
 directory itself sits inside a Git checkout.
 
-When the work grows into something real, pick **Turn into project** from the
-thread's menu. The thread's folder becomes a project where it is, so nothing
-moves and the agent keeps working in the same place. Other threads in that folder
-move with it. Rename the project in its settings, and use **Initialize Git** to
-get branch and diff controls.
+When the work grows into something real, the agent can propose a project. It
+does that only for a real code project, never for a small analysis. A pop-up asks
+whether to start one and suggests a name you can change. If you confirm, the same
+thread moves with its full history into a new folder beside your other projects
+(or under `~/.t3/projects` when you have none yet), initialized as a local Git
+repository, and the agent carries on there. **Not now** keeps the chat as it is.
+You can do the same yourself at any time with **Turn into project** in the
+thread's menu. Other threads in the chat's folder move with it. The old chat
+folder stays in place with a note pointing to the project.
+
+### Publish a project to GitHub
+
+A project that is a Git repository without a remote shows **Publish to GitHub**
+under the message box. Click it to create a private repository, add it as
+`origin`, and push. Use the arrow beside it for a public repository or other
+choices. If GitHub is not set up on this machine, the button opens the guided
+publish dialog instead. This is available on web and desktop.
 
 ### Start in the background
 

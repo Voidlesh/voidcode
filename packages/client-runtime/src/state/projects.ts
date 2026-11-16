@@ -135,6 +135,10 @@ export function findProjectByPath<T extends { workspaceRoot?: string; cwd?: stri
   });
 }
 
+/** What the folder-less home is called. Installs from before the rename stored "No project". */
+export const SCRATCH_PROJECT_LABEL = "Chats";
+export const LEGACY_SCRATCH_PROJECT_TITLE = "No project";
+
 export function isScratchProject(
   project: { readonly workspaceRoot: string; readonly isScratch?: true },
   scratchWorkspaceRoot: string | null | undefined,

@@ -1029,10 +1029,10 @@ export function useThreadActions() {
     reorderActiveThread,
     markThreadUnread,
     setThreadAutoSettle,
-    turnThreadIntoProject: (target: ScopedThreadRef) =>
+    turnThreadIntoProject: (target: ScopedThreadRef, name: string) =>
       createProjectFromThread({
         environmentId: target.environmentId,
-        input: { threadId: target.threadId },
+        input: { threadId: target.threadId, name },
       }),
   };
 }

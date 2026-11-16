@@ -94,6 +94,8 @@ describe("project scratch identity", () => {
       const next = registry.get(projects.projectsAtom);
 
       expect(next[0]?.isScratch).toBe(true);
+      expect(next[0]?.title).toBe("Chats");
+      expect(next[1]?.title).toBe("No project");
       expect(next[0]).not.toBe(initial[0]);
       expect(next.slice(1)).toEqual(initial.slice(1));
       for (let index = 1; index < initial.length; index++) {
@@ -116,6 +118,7 @@ describe("project scratch identity", () => {
 
       registry.set(configAtom(environmentId), null);
       expect(registry.get(projects.projectsAtom).every((project) => !project.isScratch)).toBe(true);
+      expect(registry.get(projects.projectsAtom).every((p) => p.title === "No project")).toBe(true);
     } finally {
       registry.dispose();
     }

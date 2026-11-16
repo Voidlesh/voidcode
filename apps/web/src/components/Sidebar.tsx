@@ -123,6 +123,7 @@ import {
   useThreadActions,
 } from "../hooks/useThreadActions";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
+import { useScratchProject } from "../hooks/useScratchProject";
 import { useOrderWhileOpen } from "../hooks/useOrderWhileOpen";
 import { useProjectPin } from "../hooks/useProjectGroupUpdate";
 import { useSidebarProjectGroups } from "../hooks/useSidebarProjectGroups";
@@ -981,6 +982,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const newThreadContext = useHandleNewThread();
   // Row callbacks capture only the handler; the rest of the context changes with the route.
   const { handleNewThread } = newThreadContext;
+  const scratchProject = useScratchProject();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const clearSelection = useThreadSelectionStore((s) => s.clearSelection);
   const setSelectionAnchor = useThreadSelectionStore((s) => s.setAnchor);
@@ -2734,7 +2736,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
             attemptUnpin(threadRef);
             return;
           case "turn-into-project": {
-            const result = await turnThreadIntoProject(threadRef);
+            const result = await turnThreadIntoProject(threadRef, thread.title);
             if (result._tag === "Success") {
               toastManager.add({
                 type: "success",
@@ -2926,14 +2928,21 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
 
   const showJumpHints = useThreadJumpHintsVisible(keybindings, routeThreadRef);
 
+  // Where the environment cannot host folder-less chats, New thread keeps its project behavior.
+  const newChatEnvironmentId = scratchProject.scratchEnvironmentId(
+    newThreadContext.activeThread?.environmentId ??
+      newThreadContext.activeDraftThread?.environmentId ??
+      null,
+  );
+
   const handleNewThreadClick = (event?: ReactMouseEvent) => {
-    if (
-      shouldCreateNewThreadInCurrentProject(
-        event?.shiftKey ?? false,
-        scopeGroups.length,
-        projectGroups.length,
-      )
-    ) {
+    const shiftKey = event?.shiftKey ?? false;
+    if (newChatEnvironmentId !== null && !shiftKey) {
+      if (isMobile) setOpenMobile(false);
+      void scratchProject.startScratchThread(newChatEnvironmentId);
+      return;
+    }
+    if (shouldCreateNewThreadInCurrentProject(shiftKey, scopeGroups.length, projectGroups.length)) {
       if (isMobile) setOpenMobile(false);
       // With no current or open project, such as when every project is archived, pick one.
       void startNewThreadFromContext({
@@ -2952,7 +2961,8 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
 
   const newThreadShortcutLabel =
     shortcutLabelForCommand(keybindings, "chat.new") ??
-    (shouldCreateNewThreadInCurrentProject(false, scopeGroups.length, projectGroups.length)
+    (newChatEnvironmentId === null &&
+    shouldCreateNewThreadInCurrentProject(false, scopeGroups.length, projectGroups.length)
       ? shortcutLabelForCommand(keybindings, "chat.newLocal")
       : undefined);
   const newThreadInProjectShortcutLabel = shortcutLabelForCommand(keybindings, "chat.newLocal");
@@ -3170,15 +3180,18 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
               }
               onNewProject={openAddProjectCommandPalette}
               onNewThread={handleNewThreadClick}
-              newThreadDisabled={projects.length === 0}
+              newThreadDisabled={projects.length === 0 && newChatEnvironmentId === null}
+              newThreadIsChat={newChatEnvironmentId !== null}
               newThreadShortcutLabel={newThreadShortcutLabel}
               newThreadInProjectShortcutLabel={newThreadInProjectShortcutLabel}
               showNewThreadInProjectHint={
-                !shouldCreateNewThreadInCurrentProject(
-                  false,
-                  scopeGroups.length,
-                  projectGroups.length,
-                )
+                projects.length > 0 &&
+                (newChatEnvironmentId !== null ||
+                  !shouldCreateNewThreadInCurrentProject(
+                    false,
+                    scopeGroups.length,
+                    projectGroups.length,
+                  ))
               }
               searchInputRef={threadSearchInputRef}
               searchQuery={threadSearchQuery}

@@ -260,7 +260,7 @@ export function useThreadActionMenu(input: {
           openGuestShareDialog(threadRef);
           return;
         case "turn-into-project": {
-          const result = await turnThreadIntoProject(threadRef);
+          const result = await turnThreadIntoProject(threadRef, thread.title);
           if (result._tag === "Success") {
             toastManager.add({
               type: "success",

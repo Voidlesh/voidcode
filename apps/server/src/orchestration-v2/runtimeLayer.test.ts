@@ -10574,14 +10574,31 @@ it.layer(layerTest)("snooze queued runs", (it) => {
 
 const SCRATCH_ROOT = "/tmp/runtime-layer-promotion-scratch";
 const SCRATCH_PROJECT_ID = ProjectId.make("runtime-layer-promotion-scratch");
-const layerScratchPromotionTest = ScratchThreadPromotion.layer.pipe(
-  Layer.provide(
-    Layer.mock(ManagedProjectFolders.ManagedProjectFolders)({
+const DEV_ROOT = "/tmp/runtime-layer-promotion-dev";
+// Stands in for the file copy: the new folder's project exists once the folder is "copied".
+const layerScratchPromotionFolders = Layer.unwrap(
+  Effect.gen(function* () {
+    const projects = yield* ProjectService.ProjectService;
+    return Layer.mock(ManagedProjectFolders.ManagedProjectFolders)({
       scratchRoot: Effect.succeedSome(SCRATCH_ROOT),
       isScratchProject: (projectId) => Effect.succeed(projectId === SCRATCH_PROJECT_ID),
       namedProjectsRoot: "/projects",
-    }),
-  ),
+      relocateScratchFolder: ({ name }) =>
+        Effect.gen(function* () {
+          const workspaceRoot = `${DEV_ROOT}/${name.toLowerCase().replaceAll(" ", "-")}`;
+          const { project } = yield* projects.bootstrap({
+            commandId: CommandId.make(`promotion-relocate-${workspaceRoot}`),
+            projectId: ProjectId.make(`promotion-relocate-${workspaceRoot}`),
+            title: name,
+            workspaceRoot,
+          });
+          return { projectId: project.id, workspaceRoot };
+        }).pipe(Effect.orDie),
+    });
+  }),
+);
+const layerScratchPromotionTest = ScratchThreadPromotion.layer.pipe(
+  Layer.provide(layerScratchPromotionFolders),
   Layer.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
   Layer.provideMerge(layerProjectDeletionTest),
 );
@@ -10756,10 +10773,96 @@ it.layer(layerScratchPromotionTest)("turning a No project thread into a project"
 
       const error = yield* promotion.promote({ threadId }).pipe(Effect.flip);
 
+      assert.equal(error.message, "Only a Chats thread with its own folder can become a project.");
+    }),
+  );
+
+  it.effect("moves a chat into a new project folder and keeps its history", () =>
+    Effect.gen(function* () {
+      const promotion = yield* ScratchThreadPromotion.ScratchThreadPromotion;
+      const projects = yield* ProjectService.ProjectService;
+      const { folder, createThread } = yield* setup("relocate");
+      const threadId = yield* createThread("main", folder);
+      const siblingId = yield* createThread("sibling", folder);
+      const otherId = yield* createThread("other", `${SCRATCH_ROOT}/2026-01-01-relocate-elsewhere`);
+
+      const { projectId } = yield* promotion.promote({ threadId, name: "Moved App" });
+
+      const project = Option.getOrThrow(yield* projects.getById(projectId));
+      assert.equal(project.workspaceRoot, `${DEV_ROOT}/moved-app`);
+      assert.equal(project.title, "Moved App");
+      for (const id of [threadId, siblingId]) {
+        const shell = yield* shellOf(id);
+        assert.equal(shell?.projectId, projectId);
+        assert.isNull(shell?.worktreePath);
+      }
+      assert.equal((yield* shellOf(otherId))?.projectId, SCRATCH_PROJECT_ID);
+      assert.deepEqual(yield* promotion.promote({ threadId, name: "Moved App" }), { projectId });
+      assert.deepEqual(yield* promotion.promote({ threadId: siblingId, name: "Moved App" }), {
+        projectId,
+      });
+    }),
+  );
+
+  it.effect("finishes a relocation that stopped after pointing the thread at the new folder", () =>
+    Effect.gen(function* () {
+      const promotion = yield* ScratchThreadPromotion.ScratchThreadPromotion;
+      const projects = yield* ProjectService.ProjectService;
+      const orchestrator = yield* Orchestrator.OrchestratorV2;
+      const { folder, createThread } = yield* setup("resume");
+      const threadId = yield* createThread("main", folder);
+      const target = yield* projects.create({
+        commandId: CommandId.make("promotion-resume-project"),
+        projectId: ProjectId.make("promotion-resume-project"),
+        title: "Resumed",
+        workspaceRoot: `${DEV_ROOT}/resumed`,
+      });
+      yield* orchestrator.dispatch({
+        type: "thread.metadata.update",
+        commandId: CommandId.make("promotion-resume-point"),
+        threadId,
+        worktreePath: target.workspaceRoot,
+      });
+
+      assert.deepEqual(yield* promotion.promote({ threadId, name: "Resumed" }), {
+        projectId: target.id,
+      });
+      const shell = yield* shellOf(threadId);
+      assert.equal(shell?.projectId, target.id);
+      assert.isNull(shell?.worktreePath);
+    }),
+  );
+
+  it.effect("changes nothing while a thread is busy, and a relocation needs a Chats thread", () =>
+    Effect.gen(function* () {
+      const promotion = yield* ScratchThreadPromotion.ScratchThreadPromotion;
+      const projects = yield* ProjectService.ProjectService;
+      const orchestrator = yield* Orchestrator.OrchestratorV2;
+      const { folder, createThread } = yield* setup("relocate-busy");
+      const busyId = yield* createThread("delegate", folder);
+      yield* orchestrator.dispatch({
+        type: "message.dispatch",
+        createdBy: "user",
+        creationSource: "web",
+        commandId: CommandId.make("promotion-relocate-busy-message"),
+        threadId: busyId,
+        messageId: MessageId.make("promotion-relocate-busy-message"),
+        text: "Keep this run active.",
+        attachments: [],
+        modelSelection,
+        dispatchMode: { type: "start_immediately" },
+      });
+
+      const error = yield* promotion
+        .promote({ threadId: busyId, name: "Busy App" })
+        .pipe(Effect.flip);
+
       assert.equal(
         error.message,
-        "Only a No project thread with its own folder can become a project.",
+        '"relocate-busy delegate" is still working. Finish or stop it first.',
       );
+      assert.isTrue(Option.isNone(yield* projects.getByWorkspaceRoot(`${DEV_ROOT}/busy-app`)));
+      assert.equal((yield* shellOf(busyId))?.projectId, SCRATCH_PROJECT_ID);
     }),
   );
 });

@@ -297,6 +297,8 @@ import { useCitedHistory } from "./chat/citationProcedure";
 import type { MessagesTimelineHistoryControls } from "./chat/MessagesTimeline";
 import { ThreadTimeline } from "./chat/ThreadTimeline";
 import { NativeChildWorkDialog } from "./chat/NativeChildWorkDialog";
+import { ProjectProposalDialog } from "./chat/ProjectProposalDialog";
+import { canTurnThreadIntoProject } from "../hooks/useThreadActions";
 import { ProviderSubagentBar } from "./chat/ProviderSubagentBar";
 import { getTriggerDisplayModelName } from "./chat/providerIconUtils";
 import { resolveScrollToEndClearance } from "./composerFooterLayout";
@@ -314,6 +316,8 @@ import {
 } from "./chat/PanelLayoutControls";
 import type { ExpandedImagePreview } from "./chat/ExpandedImagePreview";
 import { ThreadDetailsPanel } from "./chat/ThreadDetailsPanel";
+import { GithubPublishButton } from "./chat/GithubPublishButton";
+import { shouldOfferGithubPublish } from "./chat/GithubPublishButton.logic";
 import { deriveThreadProgress } from "./chat/threadProgress.logic";
 import { NoActiveThreadState } from "./NoActiveThreadState";
 import {
@@ -1803,6 +1807,16 @@ export default function ChatView(props: ChatViewProps) {
           providerSubagentModels,
           reportedModelSelection,
         );
+  const offersGithubPublish =
+    gitCwd !== null &&
+    shouldOfferGithubPublish({
+      isScratchProject: activeProjectIsScratch,
+      embedded,
+      isProviderSubagent: showProviderSubagentBar,
+      canWriteSourceControl,
+      worktreePath: activeThreadWorktreePath,
+      gitStatus: gitStatusQuery.data,
+    });
   const showComposerContextStrip =
     !embedded &&
     shouldShowComposerContextStrip({
@@ -1811,6 +1825,7 @@ export default function ChatView(props: ChatViewProps) {
       hasActiveProject: activeProject !== null && !showProviderSubagentBar,
       isGitRepo,
       showEnvironmentIndicator: showComposerEnvironmentIndicator,
+      offersGithubPublish,
     });
   const terminalShortcutLabelOptions = {
     context: {
@@ -3843,18 +3858,33 @@ export default function ChatView(props: ChatViewProps) {
                                       : undefined
                                   }
                                   availableEnvironments={logicalProjectEnvironments}
-                                  {...(isServerThread
+                                  {...(isServerThread && !offersGithubPublish
                                     ? {}
                                     : {
                                         trailing: (
-                                          <ComposerContextPermissions
-                                            environmentId={environmentId}
-                                            runtimeMode={runtimeMode}
-                                            supportedRuntimeModes={
-                                              activeProviderStatus?.supportedRuntimeModes
-                                            }
-                                            onRuntimeModeChange={handleRuntimeModeChangeStable}
-                                          />
+                                          <>
+                                            {offersGithubPublish && gitCwd !== null ? (
+                                              <GithubPublishButton
+                                                environmentId={environmentId}
+                                                threadRef={activeThreadRef}
+                                                gitCwd={gitCwd}
+                                                offeredProviders={
+                                                  serverConfig?.settings
+                                                    .offeredSourceControlProviders
+                                                }
+                                              />
+                                            ) : null}
+                                            {isServerThread ? null : (
+                                              <ComposerContextPermissions
+                                                environmentId={environmentId}
+                                                runtimeMode={runtimeMode}
+                                                supportedRuntimeModes={
+                                                  activeProviderStatus?.supportedRuntimeModes
+                                                }
+                                                onRuntimeModeChange={handleRuntimeModeChangeStable}
+                                              />
+                                            )}
+                                          </>
                                         ),
                                       })}
                                 />
@@ -4074,6 +4104,13 @@ export default function ChatView(props: ChatViewProps) {
         onConfirm={onConfirmRevertStable}
       />
       {embedded ? null : <LinkPullRequestDialogHost />}
+      {embedded || !isServerThread ? null : (
+        <ProjectProposalDialog
+          threadRef={routeThreadRef}
+          rows={serverTimelineRows}
+          enabled={activeProjectIsScratch && !isWorking && canTurnThreadIntoProject(routeThreadRef)}
+        />
+      )}
       <ThreadVisitWatermark threadRef={routeThreadRef} />
       <ExpandedImageDialogHost threadKey={routeThreadKey} />
     </div>

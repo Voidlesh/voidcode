@@ -20,6 +20,8 @@ import { resolveT3McpToolId } from "./t3McpToolPresentation.ts";
 export const SEND_TO_USER_TOOL_NAME = "send_to_user";
 // 4,000 UTF-16 units stay inside MAX_PARSED_BYTES even as 3-byte characters.
 export const SEND_TO_USER_MAX_LENGTH = 4_000;
+export const PROPOSE_PROJECT_TOOL_NAME = "propose_project";
+export const PROJECT_PROPOSAL_MAX_NAME_LENGTH = 80;
 
 const MAX_PARSED_BYTES = 16_384;
 const MAX_METADATA_BYTES = 8_192;
@@ -55,6 +57,7 @@ interface CompactToolOutput {
   linkedCount?: number;
   unlinkedCount?: number;
   sentMessage?: string;
+  projectProposal?: { name: string };
 }
 
 function readResult(value: unknown, budget: ResultReadBudget, depth = 0): ResultEnvelope {
@@ -146,6 +149,16 @@ export function compactDynamicToolOutput(value: unknown): CompactToolOutput | un
     ) {
       output.sentMessage = data.sentMessage;
     }
+    const proposedName = Predicate.isObject(data.projectProposal)
+      ? data.projectProposal.name
+      : undefined;
+    if (
+      typeof proposedName === "string" &&
+      proposedName.trim() !== "" &&
+      proposedName.length <= PROJECT_PROPOSAL_MAX_NAME_LENGTH
+    ) {
+      output.projectProposal = { name: proposedName.trim() };
+    }
     const htmlRender = readHtmlRenderReference(data.htmlRender);
     if (htmlRender !== undefined) output.htmlRender = htmlRender;
     const mcpApp = readMcpAppReference(data[MCP_APP_OUTPUT_KEY]);
@@ -229,6 +242,16 @@ export function sentMessageFromToolItem(item: {
   }
   const output = compactDynamicToolOutput(item.output);
   return output?.isError ? undefined : output?.sentMessage;
+}
+
+/** The project name an agent proposed with `propose_project`, which clients turn into a question for the user. */
+export function projectProposalFromToolItem(item: {
+  readonly toolName: string | null | undefined;
+  readonly output?: unknown;
+}): string | undefined {
+  if (resolveT3McpToolId(item.toolName) !== PROPOSE_PROJECT_TOOL_NAME) return undefined;
+  const output = compactDynamicToolOutput(item.output);
+  return output?.isError ? undefined : output?.projectProposal?.name;
 }
 
 /** The thread-owned file `preview_recording_stop` stored for the agent. */

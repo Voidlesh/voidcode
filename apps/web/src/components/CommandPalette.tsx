@@ -162,6 +162,7 @@ import {
   isExplicitRelativeProjectPath,
   isFilesystemBrowseQuery,
   isScratchProject,
+  SCRATCH_PROJECT_LABEL,
   isUnsupportedWindowsProjectPath,
   resolveProjectPathForDispatch,
 } from "@t3tools/client-runtime/state/projects";
@@ -910,8 +911,8 @@ function OpenCommandPaletteDialog(props: {
         {
           kind: "action" as const,
           value: NEW_THREAD_NO_PROJECT_VALUE,
-          searchTerms: ["no project", "without project", "none"],
-          title: "No project",
+          searchTerms: ["chat", "chats", "no project", "without project", "none"],
+          title: SCRATCH_PROJECT_LABEL,
           icon: <MessageSquareDashedIcon className={ITEM_ICON_CLASS} />,
           shortcutCommand: "chat.newWithoutProject" as const,
           run: () => startScratchThread(scratchTargetEnvironmentId),

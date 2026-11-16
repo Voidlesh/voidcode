@@ -48,6 +48,14 @@ describe("chatGitStatusAtom", () => {
     registry.set(source, status({ refName: "feature", hasWorkingTreeChanges: false }));
     expect(notified).toHaveLength(2);
 
+    registry.set(
+      source,
+      status({ refName: "feature", hasWorkingTreeChanges: false, hasPrimaryRemote: false }),
+    );
+    expect(notified).toHaveLength(3);
+    registry.set(source, status({ refName: "feature", hasWorkingTreeChanges: false }));
+    expect(notified).toHaveLength(4);
+
     const pr = () => ({
       number: 42,
       title: "Feature PR",
@@ -58,11 +66,11 @@ describe("chatGitStatusAtom", () => {
     });
     const linked = { refName: "feature", hasWorkingTreeChanges: false };
     registry.set(source, status({ ...linked, pr: pr() }));
-    expect(notified).toHaveLength(3);
+    expect(notified).toHaveLength(5);
 
     // A new object with the same data, as each remote status refresh sends.
     registry.set(source, status({ ...linked, pr: pr() }));
-    expect(notified).toHaveLength(3);
+    expect(notified).toHaveLength(5);
     unsubscribe();
   });
 });

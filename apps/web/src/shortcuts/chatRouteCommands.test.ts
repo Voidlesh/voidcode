@@ -6,6 +6,7 @@ import * as commandPalette from "../commandPaletteBus";
 import { DraftId, useComposerDraftStore } from "../composerDraftStore";
 import * as previewActions from "../components/preview/previewActionBus";
 import * as settings from "../hooks/useSettings";
+import * as scratchProject from "../hooks/useScratchProject";
 import * as storage from "../hooks/useLocalStorage";
 import * as threadActions from "../lib/chatThreadActions";
 import * as entities from "../state/entities";
@@ -74,6 +75,31 @@ describe("new thread commands", () => {
         projectId: scenario.count === 1 ? "active" : "idle",
       });
     }
+  });
+});
+
+describe("new chat command", () => {
+  it("chat.new starts a chat without a project where the environment offers one", () => {
+    const startScratchThread = vi.fn().mockResolvedValue(undefined);
+    using _scratch = vi.spyOn(scratchProject, "createScratchProjectActions").mockReturnValue({
+      scratchEnvironmentId: () => EnvironmentId.make("local"),
+      startScratchThread,
+    } as unknown as ReturnType<typeof scratchProject.createScratchProjectActions>);
+    using openPicker = vi.spyOn(commandPalette, "openCommandPalette").mockImplementation(() => {});
+    using startLocal = vi.spyOn(threadActions, "startNewThreadFromContext").mockResolvedValue(true);
+    using register = vi.spyOn(dispatcher, "registerCommands").mockReturnValue(() => {});
+    using stack = new DisposableStack();
+    stack.defer(installChatRouteCommands({ state: { matches: [] } } as unknown as AnyRouter));
+    const event = {
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as KeyboardEvent;
+
+    register.mock.calls[0]![0]["chat.new"]!(event);
+
+    expect(startScratchThread).toHaveBeenCalledWith("local");
+    expect(openPicker).not.toHaveBeenCalled();
+    expect(startLocal).not.toHaveBeenCalled();
   });
 });
 

@@ -10,7 +10,11 @@ import { Atom } from "effect/reactivity";
 
 import type { EnvironmentProject } from "./models.ts";
 import { scopeProject } from "./models.ts";
-import { isScratchProject } from "./projects.ts";
+import {
+  isScratchProject,
+  LEGACY_SCRATCH_PROJECT_TITLE,
+  SCRATCH_PROJECT_LABEL,
+} from "./projects.ts";
 import { type EnvironmentCatalogState, enabledEnvironmentIds } from "./connections.ts";
 import { arrayElementsEqual, parseProjectKey, projectKey, projectRefsEqual } from "./entities.ts";
 
@@ -83,7 +87,14 @@ export function createEnvironmentProjectAtoms(input: {
           ? null
           : {
               ...scopeProject(ref.environmentId, source),
-              ...(scratch ? { isScratch: true as const } : {}),
+              ...(scratch
+                ? {
+                    isScratch: true as const,
+                    ...(source.title === LEGACY_SCRATCH_PROJECT_TITLE
+                      ? { title: SCRATCH_PROJECT_LABEL }
+                      : {}),
+                  }
+                : {}),
             };
       return previousValue;
     }).pipe(Atom.withLabel(`environment-project:${key}`));

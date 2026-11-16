@@ -545,6 +545,11 @@ export type ProjectCreateNewResult = typeof ProjectCreateNewResult.Type;
 
 export const ProjectCreateFromThreadInput = Schema.Struct({
   threadId: ThreadId,
+  /**
+   * With a name, the chat's files move into a new folder of that name next to the user's other
+   * projects. Without one, the chat's own folder becomes the project in place.
+   */
+  name: Schema.optionalKey(TrimmedNonEmptyString.check(Schema.isMaxLength(200))),
 });
 export type ProjectCreateFromThreadInput = typeof ProjectCreateFromThreadInput.Type;
 

@@ -403,6 +403,7 @@ interface PublishRepositoryDialogProps {
   readonly threadRef: ScopedThreadRef | null;
   readonly gitCwd: string;
   readonly offeredProviders: OfferedSourceControlProviders | undefined;
+  readonly initialVisibility?: SourceControlRepositoryVisibility;
 }
 
 export function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
@@ -419,8 +420,9 @@ export function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
   const [selectedPublishProvider, setSelectedPublishProvider] =
     useState<SourceControlProviderKind | null>(null);
   const [publishRepositoryOverride, setPublishRepositoryOverride] = useState<string | null>(null);
-  const [publishVisibility, setPublishVisibility] =
-    useState<SourceControlRepositoryVisibility>("private");
+  const [publishVisibility, setPublishVisibility] = useState<SourceControlRepositoryVisibility>(
+    props.initialVisibility ?? "private",
+  );
   const [publishRemoteName, setPublishRemoteName] = useState("origin");
   const [publishProtocol, setPublishProtocol] = useState<SourceControlCloneProtocol>("ssh");
   const [publishWizardStep, setPublishWizardStep] = useState(0);

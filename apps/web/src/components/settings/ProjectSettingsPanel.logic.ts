@@ -1,3 +1,4 @@
+import { SCRATCH_PROJECT_LABEL } from "@t3tools/client-runtime/state/projects";
 import type { ProjectIconOverride } from "@t3tools/contracts";
 
 import type {
@@ -6,7 +7,7 @@ import type {
 } from "../../sidebarProjectGrouping";
 import type { Project } from "../../types";
 
-export const SCRATCH_PROJECT_TITLE = "No project";
+export const SCRATCH_PROJECT_TITLE = SCRATCH_PROJECT_LABEL;
 const SCRATCH_PROJECT_ICON = {
   kind: "lucide",
   name: "message-square-dashed",

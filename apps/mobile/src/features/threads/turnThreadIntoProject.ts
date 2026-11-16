@@ -27,21 +27,25 @@ export function canTurnThreadIntoProject(thread: EnvironmentThreadShell): boolea
   return project?.isScratch === true;
 }
 
-export async function turnThreadIntoProject(thread: EnvironmentThreadShell): Promise<void> {
+export async function turnThreadIntoProject(
+  thread: EnvironmentThreadShell,
+  name: string = thread.title,
+): Promise<boolean> {
   const title = "Could not turn thread into a project";
   if (!readEnvironmentScope(thread.environmentId, AuthOrchestrationOperateScope)) {
     Dialog.alert(title, "This connection cannot change threads.");
-    return;
+    return false;
   }
   void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   const result = await runAtomCommand(
     appAtomRegistry,
     projectEnvironment.createFromThread,
-    { environmentId: thread.environmentId, input: { threadId: thread.id } },
+    { environmentId: thread.environmentId, input: { threadId: thread.id, name } },
     { reportFailure: false },
   );
   if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
     const error = squashAtomCommandFailure(result);
     Dialog.alert(title, error instanceof Error ? error.message : "Try again.");
   }
+  return result._tag === "Success";
 }

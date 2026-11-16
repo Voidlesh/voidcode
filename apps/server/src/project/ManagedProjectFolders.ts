@@ -129,6 +129,22 @@ export class ManagedProjectFolders extends Context.Service<
       },
       NamedProjectError
     >;
+    /**
+     * Copies a chat's folder into a new project folder named `name`, next to the user's other
+     * projects, and makes it a Git repository and a project. The source keeps its files and gains a
+     * marker naming the copy, so the caller can move threads first and a retry finishes the move.
+     */
+    readonly relocateScratchFolder: (input: {
+      readonly name: string;
+      readonly sourceFolder: string;
+    }) => Effect.Effect<
+      {
+        readonly projectId: ProjectId;
+        readonly workspaceRoot: string;
+        readonly commitError?: string;
+      },
+      NamedProjectError
+    >;
   }
 >()("t3/project/ManagedProjectFolders") {}
 
@@ -161,6 +177,9 @@ const ICON_BACKGROUNDS = [
 ] as const;
 
 const MAX_NAMED_FOLDER_ATTEMPTS = 100;
+
+// Written into a chat's folder once its files are copied, so a retry reuses the copy.
+const RELOCATION_MARKER = ".t3-relocated-to";
 
 function escapeXml(value: string): string {
   return value
@@ -317,7 +336,7 @@ const make = Effect.gen(function* () {
         .bootstrap({
           commandId: CommandId.make(`scratch-project:${id}`),
           projectId: ProjectId.make(id),
-          title: "No project",
+          title: "Chats",
           workspaceRoot,
         })
         .pipe(
@@ -394,14 +413,11 @@ const make = Effect.gen(function* () {
 
   const claimNamedFolder = Effect.fn("ManagedProjectFolders.claimNamedFolder")(function* (
     name: string,
+    parent: string = namedProjectsRoot,
   ) {
     yield* fileSystem
-      .makeDirectory(namedProjectsRoot, { recursive: true })
-      .pipe(
-        Effect.mapError(
-          (cause) => new NamedProjectFolderError({ folder: namedProjectsRoot, cause }),
-        ),
-      );
+      .makeDirectory(parent, { recursive: true })
+      .pipe(Effect.mapError((cause) => new NamedProjectFolderError({ folder: parent, cause })));
     const folderName = newProjectFolderName(name);
     const claimed = yield* claimFreeFolder(
       (attempt) =>
@@ -409,24 +425,51 @@ const make = Effect.gen(function* () {
           attempt > MAX_NAMED_FOLDER_ATTEMPTS
             ? Option.none()
             : Option.some(
-                path.join(
-                  namedProjectsRoot,
-                  attempt === 1 ? folderName : `${folderName}-${attempt}`,
-                ),
+                path.join(parent, attempt === 1 ? folderName : `${folderName}-${attempt}`),
               ),
         ),
       (folder, cause) => new NamedProjectFolderError({ folder, cause }),
     );
     if (Option.isSome(claimed)) return claimed.value;
     return yield* new NamedProjectFolderError({
-      folder: path.join(namedProjectsRoot, folderName),
+      folder: path.join(parent, folderName),
       cause: `Every folder name for "${folderName}" is taken.`,
     });
+  });
+
+  const isDirectory = (folder: string) =>
+    fileSystem.stat(folder).pipe(
+      Effect.map((info) => info.type === "Directory"),
+      Effect.orElseSucceed(() => false),
+    );
+
+  // Folders holding the user's projects, most projects first; filesystem and managed roots do not count.
+  const projectParents = Effect.fn("ManagedProjectFolders.projectParents")(function* () {
+    const shells = yield* projects.listShells().pipe(Effect.orElseSucceed(() => []));
+    const managedRoot = path.resolve(config.baseDir);
+    const counts = new Map<string, number>();
+    for (const shell of shells) {
+      const parent = path.dirname(path.resolve(shell.workspaceRoot));
+      const isFilesystemRoot = path.dirname(parent) === parent;
+      const isManaged = parent === managedRoot || parent.startsWith(managedRoot + path.sep);
+      if (isFilesystemRoot || isManaged) continue;
+      counts.set(parent, (counts.get(parent) ?? 0) + 1);
+    }
+    return [...counts].toSorted(([, left], [, right]) => right - left).map(([parent]) => parent);
+  });
+
+  // The folder holding most of the user's projects (their dev folder); chats move in beside them.
+  const projectsParent = Effect.fn("ManagedProjectFolders.projectsParent")(function* () {
+    for (const parent of yield* projectParents()) {
+      if (yield* isDirectory(parent)) return parent;
+    }
+    return namedProjectsRoot;
   });
 
   const scaffoldRepository = Effect.fn("ManagedProjectFolders.scaffoldRepository")(function* (
     cwd: string,
     name: string,
+    options?: { readonly preserveExisting?: boolean },
   ) {
     const branch =
       (yield* git
@@ -438,18 +481,24 @@ const make = Effect.gen(function* () {
       args: ["init", `--initial-branch=${branch}`],
       timeoutMs: 10_000,
     });
-    yield* fileSystem.writeFileString(path.join(cwd, "README.md"), namedProjectReadme(name));
-    yield* fileSystem.makeDirectory(path.join(cwd, "assets"));
-    yield* fileSystem.writeFileString(
-      path.join(cwd, "assets", "icon.svg"),
-      namedProjectIconSvg(name),
-    );
+    // A copied chat may already have its own README or icon; those stay as they are.
+    const written: string[] = [];
+    const writeScaffoldFile = Effect.fnUntraced(function* (relativePath: string, content: string) {
+      const target = path.join(cwd, relativePath);
+      if (options?.preserveExisting === true && (yield* fileSystem.exists(target))) return;
+      yield* fileSystem.makeDirectory(path.dirname(target), { recursive: true });
+      yield* fileSystem.writeFileString(target, content);
+      written.push(relativePath);
+    });
+    yield* writeScaffoldFile("README.md", namedProjectReadme(name));
+    yield* writeScaffoldFile("assets/icon.svg", namedProjectIconSvg(name));
+    if (written.length === 0) return undefined;
     // Force explicit filenames so global ignore rules cannot drop them, and keep
     // core.safecrlf=true from refusing the LF files under CRLF conversion.
     yield* git.execute({
       operation: "ManagedProjectFolders.add",
       cwd,
-      args: ["-c", "core.safecrlf=false", "add", "--force", "--", "README.md", "assets/icon.svg"],
+      args: ["-c", "core.safecrlf=false", "add", "--force", "--", ...written],
       timeoutMs: 10_000,
     });
     return yield* git
@@ -482,31 +531,124 @@ const make = Effect.gen(function* () {
         .pipe(Effect.mapError((cause) => new NamedProjectCreateError({ workspaceRoot, cause }))),
     ]).pipe(Effect.onExit((exit) => (Exit.isSuccess(exit) ? Effect.void : removeFolder)));
     const [commitError, id] = prepared;
-    const project = yield* projects
-      .create({
-        commandId: CommandId.make(`named-project:${id}`),
-        projectId: ProjectId.make(id),
-        title: input.name,
-        workspaceRoot,
-      })
-      .pipe(
-        // Re-check ownership before deleting rejected creations; interruption after commit or conflicts can leave an owner.
-        Effect.tapError((error) =>
-          error._tag === "ProjectConflictError"
-            ? Effect.void
-            : projects.getByWorkspaceRoot(workspaceRoot).pipe(
-                Effect.flatMap((owner) => (Option.isNone(owner) ? removeFolder : Effect.void)),
-                Effect.ignore,
-              ),
-        ),
-        Effect.mapError((cause) => new NamedProjectCreateError({ workspaceRoot, cause })),
-      );
+    const project = yield* registerProject({ id, name: input.name, workspaceRoot, removeFolder });
     return {
       projectId: project.id,
       workspaceRoot,
       ...(commitError === undefined ? {} : { commitError }),
     };
   });
+
+  const registerProject = (input: {
+    readonly id: string;
+    readonly name: string;
+    readonly workspaceRoot: string;
+    readonly removeFolder: Effect.Effect<void>;
+  }) =>
+    projects
+      .create({
+        commandId: CommandId.make(`named-project:${input.id}`),
+        projectId: ProjectId.make(input.id),
+        title: input.name,
+        workspaceRoot: input.workspaceRoot,
+      })
+      .pipe(
+        // Re-check ownership before deleting rejected creations; interruption after commit or conflicts can leave an owner.
+        Effect.tapError((error) =>
+          error._tag === "ProjectConflictError"
+            ? Effect.void
+            : projects.getByWorkspaceRoot(input.workspaceRoot).pipe(
+                Effect.flatMap((owner) =>
+                  Option.isNone(owner) ? input.removeFolder : Effect.void,
+                ),
+                Effect.ignore,
+              ),
+        ),
+        Effect.mapError(
+          (cause) => new NamedProjectCreateError({ workspaceRoot: input.workspaceRoot, cause }),
+        ),
+      );
+
+  // The agent can write the chat folder, so a marker only counts while it names a git folder
+  // that sits where a relocation would have put it.
+  const readRelocationTarget = Effect.fn("ManagedProjectFolders.readRelocationTarget")(function* (
+    marker: string,
+  ) {
+    const text = yield* fileSystem.readFileString(marker).pipe(Effect.orElseSucceed(() => ""));
+    const target = text.trim();
+    if (target.length === 0 || !path.isAbsolute(target)) return null;
+    const allowedParents = [namedProjectsRoot, ...(yield* projectParents())];
+    if (!allowedParents.includes(path.dirname(path.resolve(target)))) return null;
+    const isRepository = yield* fileSystem
+      .exists(path.join(target, ".git"))
+      .pipe(Effect.orElseSucceed(() => false));
+    return isRepository && (yield* isDirectory(target)) ? target : null;
+  });
+
+  const copyIntoProjectFolder = Effect.fn("ManagedProjectFolders.copyIntoProjectFolder")(
+    function* (input: { readonly name: string; readonly sourceFolder: string }) {
+      const parent = yield* projectsParent();
+      // A dev folder we cannot write to must not block the move; the managed root always works.
+      const workspaceRoot = yield* claimNamedFolder(input.name, parent).pipe(
+        Effect.catchTags({
+          NamedProjectFolderError: (error) =>
+            parent === namedProjectsRoot
+              ? Effect.fail(error)
+              : claimNamedFolder(input.name, namedProjectsRoot),
+        }),
+      );
+      const removeFolder = fileSystem
+        .remove(workspaceRoot, { recursive: true })
+        .pipe(Effect.ignore);
+      const commitError = yield* Effect.gen(function* () {
+        yield* fileSystem.copy(input.sourceFolder, workspaceRoot, { overwrite: true });
+        yield* fileSystem.remove(path.join(workspaceRoot, RELOCATION_MARKER), { force: true });
+        // A chat that already made its own repository keeps it, history included.
+        const hasRepository = yield* fileSystem.exists(path.join(workspaceRoot, ".git"));
+        const failure = hasRepository
+          ? undefined
+          : yield* scaffoldRepository(workspaceRoot, input.name, { preserveExisting: true });
+        yield* fileSystem.writeFileString(
+          path.join(input.sourceFolder, RELOCATION_MARKER),
+          workspaceRoot,
+        );
+        return failure;
+      }).pipe(
+        Effect.mapError((cause) => new NamedProjectFolderError({ folder: workspaceRoot, cause })),
+        Effect.onExit((exit) => (Exit.isSuccess(exit) ? Effect.void : removeFolder)),
+      );
+      return { workspaceRoot, commitError };
+    },
+  );
+
+  const relocateScratchFolder: ManagedProjectFolders["Service"]["relocateScratchFolder"] =
+    Effect.fn("ManagedProjectFolders.relocateScratchFolder")(function* (input) {
+      const resumed = yield* readRelocationTarget(path.join(input.sourceFolder, RELOCATION_MARKER));
+      const copied =
+        resumed === null
+          ? yield* copyIntoProjectFolder(input)
+          : { workspaceRoot: resumed, commitError: undefined };
+      const { workspaceRoot, commitError } = copied;
+      const owner = yield* projects
+        .getByWorkspaceRoot(workspaceRoot)
+        .pipe(Effect.mapError((cause) => new NamedProjectCreateError({ workspaceRoot, cause })));
+      if (Option.isSome(owner)) return { projectId: owner.value.id, workspaceRoot };
+      const id = yield* random
+        .uuidV4()
+        .pipe(Effect.mapError((cause) => new NamedProjectCreateError({ workspaceRoot, cause })));
+      // The copy is complete and marked here, so a rejected creation leaves it for the retry.
+      const project = yield* registerProject({
+        id,
+        name: input.name,
+        workspaceRoot,
+        removeFolder: Effect.void,
+      });
+      return {
+        projectId: project.id,
+        workspaceRoot,
+        ...(commitError === undefined ? {} : { commitError }),
+      };
+    });
 
   return ManagedProjectFolders.of({
     scratchRoot,
@@ -515,6 +657,7 @@ const make = Effect.gen(function* () {
     folderForThread,
     namedProjectsRoot,
     createNamedProject,
+    relocateScratchFolder,
   });
 });
 

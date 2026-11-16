@@ -4,6 +4,7 @@ import {
   compactDynamicToolOutput,
   MAX_TOOL_OUTPUT_IMAGES,
   mcpToolResultOutput,
+  projectProposalFromToolItem,
   SEND_TO_USER_MAX_LENGTH,
   sentMessageFromToolItem,
   toolOutputImages,
@@ -35,6 +36,26 @@ describe("compactDynamicToolOutput", () => {
     // OpenCode 2 Code Mode reports a script's nested send_to_user call as one `execute` item.
     const output = JSON.stringify({ sentMessage: "Draft", message: "Shown to the user." });
     expect(sentMessageFromToolItem({ toolName: "execute", output })).toBe("Draft");
+  });
+
+  it("keeps a proposed project name and reads it only from a successful propose_project item", () => {
+    const output = JSON.stringify({
+      projectProposal: { name: "Pinball Stats", note: "dropped" },
+      message: "The user is being asked.",
+    });
+    expect(compactDynamicToolOutput([{ type: "text", text: output }])).toEqual({
+      projectProposal: { name: "Pinball Stats" },
+    });
+    for (const toolName of ["propose_project", "mcp__t3-code__propose_project"]) {
+      expect(projectProposalFromToolItem({ toolName, output })).toBe("Pinball Stats");
+    }
+    expect(projectProposalFromToolItem({ toolName: "send_to_user", output })).toBeUndefined();
+    expect(
+      projectProposalFromToolItem({
+        toolName: "propose_project",
+        output: { isError: true, projectProposal: { name: "Pinball Stats" } },
+      }),
+    ).toBeUndefined();
   });
 
   it("keeps nested thread identity and scalar task IDs without result bodies", () => {
