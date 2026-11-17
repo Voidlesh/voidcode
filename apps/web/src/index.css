@@ -1556,7 +1556,7 @@ html[data-theme-id="t3-chat"] {
     }
 
     & .chat-markdown :not(pre) > code {
-      color: var(--contrast-message-foreground);
+      color: var(--inline-code-color, var(--contrast-message-foreground));
     }
   }
 }
@@ -2154,7 +2154,7 @@ code {
   -webkit-box-decoration-break: clone;
   background: color-mix(in srgb, var(--contrast-foreground) 10%, transparent);
   padding: 0.1em 0.35em;
-  color: var(--contrast-foreground);
+  color: var(--inline-code-color, var(--contrast-foreground));
   font-size: 0.85em;
 }
 
