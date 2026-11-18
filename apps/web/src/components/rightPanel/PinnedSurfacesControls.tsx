@@ -1,3 +1,4 @@
+/* oxlint-disable t3code/no-untranslated-copy -- fork-only copy, English only */
 import { CheckIcon, EllipsisVertical, Pin } from "lucide-react";
 import type { ComponentType, MouseEvent as ReactMouseEvent } from "react";
 

@@ -1,3 +1,4 @@
+/* oxlint-disable t3code/no-untranslated-copy -- fork-only copy, English only */
 export const STUDIO_STORAGE_KEY = "customt3:workspace-studio:v1";
 
 export type StudioHeight = "compact" | "balanced" | "immersive";

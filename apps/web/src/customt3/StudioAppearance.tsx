@@ -1,3 +1,4 @@
+/* oxlint-disable t3code/no-untranslated-copy -- fork-only copy, English only */
 import { CheckIcon, RotateCcwIcon, PaletteIcon, UploadIcon } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from "react";
 
@@ -133,9 +134,8 @@ export function StudioAppearance() {
       if (isCurrent()) {
         setError(cause instanceof Error ? cause.message : "Could not read this image.");
       }
-    } finally {
-      if (isCurrent()) setBusy(false);
     }
+    if (isCurrent()) setBusy(false);
   };
 
   const choosePreset = (preset: StudioPresetKey) => {

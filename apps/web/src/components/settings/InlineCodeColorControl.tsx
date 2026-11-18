@@ -1,3 +1,4 @@
+/* oxlint-disable t3code/no-untranslated-copy -- fork-only copy, English only */
 import { useState } from "react";
 
 import { CLAUDE_ORANGE_HEX, normalizeHexColor, writeInlineCodeColor } from "../../inlineCodeColor";

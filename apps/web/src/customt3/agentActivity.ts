@@ -1,3 +1,4 @@
+/* oxlint-disable t3code/no-untranslated-copy -- fork-only copy, English only */
 // Uses structured run metadata only, never guesses actions from message text.
 export type AgentKind = "claude" | "codex" | "gemini" | "cursor" | "unknown";
 

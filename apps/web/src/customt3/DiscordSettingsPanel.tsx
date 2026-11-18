@@ -1,3 +1,4 @@
+/* oxlint-disable t3code/no-untranslated-copy -- fork-only copy, English only */
 import type {
   DiscordActivityContext,
   DiscordPresenceConfig,
@@ -223,15 +224,19 @@ export function DiscordSettingsPanel() {
     let active = true;
     const refresh = async () => {
       const version = editVersion.current;
-      try {
-        const bridge = window.desktopBridge?.discordPresence;
-        if (!bridge) throw new Error("Discord settings are available in the T3 desktop app.");
-        const result = await bridge.get();
-        if (!active) return;
-        setLive(result);
-        if (!dirtyRef.current && version === editVersion.current) setDraft(result.config);
-      } catch (cause) {
-        if (active) setError(errorMessage(cause));
+      const bridge = window.desktopBridge?.discordPresence;
+      if (!bridge) {
+        if (active) setError("Discord settings are available in the T3 desktop app.");
+      } else {
+        try {
+          const result = await bridge.get();
+          if (active) {
+            setLive(result);
+            if (!dirtyRef.current && version === editVersion.current) setDraft(result.config);
+          }
+        } catch (cause) {
+          if (active) setError(errorMessage(cause));
+        }
       }
       if (active) timer = window.setTimeout(() => void refresh(), REFRESH_INTERVAL_MS);
     };
@@ -272,20 +277,20 @@ export function DiscordSettingsPanel() {
     setError("");
     try {
       const result = await bridge.save(draft);
-      if (!mounted.current) return;
-      setLive(result);
-      if (version === editVersion.current) {
-        editVersion.current += 1;
-        setDraft(result.config);
-        dirtyRef.current = false;
-        setDirty(false);
-        setSaved(true);
+      if (mounted.current) {
+        setLive(result);
+        if (version === editVersion.current) {
+          editVersion.current += 1;
+          setDraft(result.config);
+          dirtyRef.current = false;
+          setDirty(false);
+          setSaved(true);
+        }
       }
     } catch (cause) {
       if (mounted.current) setError(errorMessage(cause));
-    } finally {
-      if (mounted.current) setSaving(false);
     }
+    if (mounted.current) setSaving(false);
   };
 
   const textField = (

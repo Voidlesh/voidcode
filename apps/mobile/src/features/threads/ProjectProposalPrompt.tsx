@@ -1,3 +1,4 @@
+/* oxlint-disable t3code/no-untranslated-copy -- fork-only copy, English only */
 import { useEffect } from "react";
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
 

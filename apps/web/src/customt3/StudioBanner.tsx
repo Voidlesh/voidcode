@@ -1,3 +1,4 @@
+/* oxlint-disable t3code/no-untranslated-copy -- fork-only copy, English only */
 import { PaletteIcon } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useNowMinute } from "~/hooks/useNowMinute";
