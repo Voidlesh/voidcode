@@ -134,9 +134,8 @@ export function StudioAppearance() {
       if (isCurrent()) {
         setError(cause instanceof Error ? cause.message : "Could not read this image.");
       }
-    } finally {
-      if (isCurrent()) setBusy(false);
     }
+    if (isCurrent()) setBusy(false);
   };
 
   const choosePreset = (preset: StudioPresetKey) => {
