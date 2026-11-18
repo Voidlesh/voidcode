@@ -1,3 +1,4 @@
+/* oxlint-disable t3code/no-untranslated-copy -- fork-only copy, English only */
 import { CheckIcon, RotateCcwIcon, PaletteIcon, UploadIcon } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from "react";
 

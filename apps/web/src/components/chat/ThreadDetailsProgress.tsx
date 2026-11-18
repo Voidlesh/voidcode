@@ -1,3 +1,4 @@
+/* oxlint-disable t3code/no-untranslated-copy -- fork-only copy, English only */
 import type { OrchestrationV2PlanStep } from "@t3tools/contracts";
 import { CheckIcon } from "lucide-react";
 

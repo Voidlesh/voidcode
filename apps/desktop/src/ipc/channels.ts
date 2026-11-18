@@ -145,3 +145,5 @@ export const RESTART_AUDIO_SERVICE_CHANNEL = "desktop:restart-audio-service";
 export const DISCORD_PRESENCE_GET_CHANNEL = "customt3:discord:get";
 export const DISCORD_PRESENCE_SAVE_CHANNEL = "customt3:discord:save";
 export const DISCORD_PRESENCE_CONTEXT_CHANNEL = "customt3:discord:context";
+
+export const START_FILE_DRAG_CHANNEL = "desktop:start-file-drag";
