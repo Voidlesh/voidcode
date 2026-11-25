@@ -20,7 +20,6 @@ const SURFACE_KEY_BY_KIND: Partial<Record<RightPanelSurface["kind"], string>> = 
   file: "files",
   "pull-request": "pull request",
   "pull-requests": "linked pull requests",
-  "side-chat": "side chat",
 };
 
 export function surfaceKeyForKind(kind: RightPanelSurface["kind"]): string {
